@@ -1,5 +1,5 @@
 # gazebo-terrain-generator
-A terrain generator to create worlds use in gazebo
+A terrain generator to create worlds to use in gazebo
 
 # Get started
 Assuming you're using linux
