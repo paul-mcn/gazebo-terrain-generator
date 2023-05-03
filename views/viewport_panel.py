@@ -4,7 +4,7 @@ from util.app_config import settings
 from trimesh import Scene
 from trimesh.transformations import rotation_matrix
 import trimesh
-
+from util.mesh_creator import create_perlin_mesh
 
 class Viewport(tk.Frame):
     """Displays the 3D render of the mesh"""
@@ -54,7 +54,11 @@ class Viewport(tk.Frame):
         world = World(self.model_name)
         model = self.create_model()
         world.add_model(model.name, model)
+
+        mesh = create_perlin_mesh()
+        world.add_model("plane2", mesh)
         scene = world.create_scene()
+
 
         # scene: Scene = model.create_scene()
         # define a rotation matrix around the y-axis
