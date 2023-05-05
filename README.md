@@ -30,7 +30,8 @@ You can do this by running:
 # Generate terrain
 python main.py
 
-# Launch Gazebo. This is done in the root of the project dir, however, it can be done anywhere, just make sure you adjust the path arg.
+# Launch Gazebo. This is done in the root of the project dir, however, it can be done anywhere.
+# Just make sure you adjust the path arg.
 gazebo ./worlds/generated_world.world
 ```
 
