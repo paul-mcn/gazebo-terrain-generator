@@ -53,7 +53,8 @@ Once you're done with the project, deactivate it by using the `deactivate` cmd i
 ## Export paths
 As of yet, custom paths are not support. 
 It is important to note that the `generated_world.world` file sources the `ground_mesh` using `model://ground_mesh`.
-Thus, if you wish to choose a different dir, make sure to add it to the `GAZEBO_MODEL_PATH`
+Thus, if you wish to choose a different dir, make sure to add it to the `GAZEBO_MODEL_PATH`.
+
 Worlds export to `gazebo-terrain-generator/worlds` under the name `generated_world.world` by default
 Models export to `$HOME/.gazebo/models` under the name `ground_mesh` by default. Additionally, it contains the following files:
 - model.config
