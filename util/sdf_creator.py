@@ -1,7 +1,7 @@
 from pcg_gazebo.parsers.sdf import create_sdf_element
 
 
-def create_sdf_array(mesh_uri):
+def create_model_sdf_elements(mesh_uri):
     sdf_elements = [
         {"tag": "mesh", "opts": {"uri": mesh_uri}},
         {"tag": "geometry", "children": ["mesh"]},
@@ -65,8 +65,7 @@ def create_and_set_sdf_element(element, cache: dict):
         set_element_children(sdf_el, children, cache)
 
 
-def create_sdf_tree(mesh_uri: str):
-    sdf_elements = create_sdf_array(mesh_uri)
+def create_sdf_tree(sdf_elements):
     element_cache = {}
     # Create the sdf elements dynamically.
     # NOTE: child elements must be set before parent elements in the sdf_elements array

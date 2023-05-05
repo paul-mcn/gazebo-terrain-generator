@@ -1,7 +1,14 @@
 from pathlib import Path
+from pcg_gazebo.parsers.sdf_config import Author, Model, SDF, Version
+
+from pcg_gazebo.simulation.link import create_sdf_config_element
 from models.terrain_generator import TerrainGeneratorModel
-from util.sdf_creator import create_sdf_tree
+from util.sdf_creator import (
+    create_model_sdf_elements,
+    create_sdf_tree,
+)
 from pcg_gazebo.parsers.sdf import Include
+from pcg_gazebo.simulation import Link
 from util.sdf_creator import create_sdf_tree
 
 
@@ -82,10 +89,22 @@ class TerrainGeneratorController:
 
         uri = f"model://{model_folder}/{model_name}"
 
-        sdf_tree = create_sdf_tree(uri)
-        if sdf_tree:
-            sdf_tree.export_xml(f"{model_path}/model.sdf")
+        sdf_elements = create_model_sdf_elements(uri)
+        model_sdf = create_sdf_tree(sdf_elements)
+        if model_sdf:
+            model_sdf.export_xml(f"{model_path}/model.sdf")
 
+        author = Author()
+        author.email = "me@my.email"
+        author.name = "My Name"
+        sdf = SDF()
+        version = Version()
+        version.value = "1.0"
+        model = Model()
+        model.children["sdf"] = sdf
+        model.children["version"] = version
+        model.children["auhtor"] = author
+        model.export_xml(f"{model_path}/model.config")
         include = Include()
         include.uri = f"model://{model_folder}"
         world = self.model.get_world()
