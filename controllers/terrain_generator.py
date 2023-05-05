@@ -1,46 +1,98 @@
+from pathlib import Path
+from models.terrain_generator import TerrainGeneratorModel
+from util.sdf_creator import create_sdf_tree
+from pcg_gazebo.parsers.sdf import Include
+from util.sdf_creator import create_sdf_tree
+
+
 class TerrainGeneratorController:
     """docstring for Controller."""
 
     def __init__(self, model):
         super(TerrainGeneratorController, self).__init__()
-        self.model = model
+        self.model: TerrainGeneratorModel = model
         self.view = None
 
-    def set_x(self, value):
-        self.model.x = float(value)
-        if self.view:
-            self.view.viewport.draw_scene()
+    def set_width(self, value):
+        self.model.set_width(int(value))
 
-    def set_y(self, value):
-        self.model.y = float(value)
-        if self.view:
-            self.view.viewport.draw_scene()
+    def set_height(self, value):
+        self.model.set_height(int(value))
 
     def set_z(self, value):
-        self.model.z = float(value)
-        if self.view:
-            self.view.viewport.draw_scene()
+        self.model.set_z(int(value))
 
     def set_max_angle(self, value):
-        self.model.set_max_angle(value)
+        self.model.set_max_angle(int(value))
 
     def set_foliage_density(self, value):
-        self.model.set_foliage_density(value)
+        self.model.set_foliage_density(int(value))
 
-    def get_x(self):
-        return self.model.x
+    def set_resolution(self, value):
+        self.model.set_resolution(int(value))
 
-    def get_y(self):
-        return self.model.y
+    def set_scale(self, value):
+        self.model.set_scale(int(value))
 
-    def get_z(self):
-        return self.model.z
+    def set_octaves(self, value):
+        self.model.set_octaves(int(value))
+
+    def set_persistence(self, value):
+        self.model.set_persistence(float(value))
 
     def set_view(self, view):
         self.view = view
 
+    def get_height(self):
+        return self.model.get_height()
+
+    def get_width(self):
+        return self.model.get_width()
+
+    def get_z(self):
+        return self.model._z
+
+    def get_resolution(self):
+        return self.model.get_resolution()
+
+    def get_scale(self):
+        return self.model.get_scale()
+
+    def get_octaves(self):
+        return self.model.get_octaves()
+
+    def get_persistence(self):
+        return self.model.get_persistence()
+
     def get_max_angle(self):
-        return self.model.max_angle
+        return self.model.get_max_angle()
 
     def get_foliage_density(self):
-        return self.model.foliage_density
+        return self.model.get_foliage_density()
+
+    def export_mesh(self, model_folder="ground_mesh", model_name="model.obj"):
+        model_path = Path(Path.home(), ".gazebo", "models", model_folder)
+        model_path.mkdir(exist_ok=True)
+
+        mesh = self.model.get_mesh()
+        if mesh is None:
+            return print("Erorr: mesh does not exist")
+
+        mesh.export(f"{model_path}/{model_name}")
+
+        uri = f"model://{model_folder}/{model_name}"
+
+        sdf_tree = create_sdf_tree(uri)
+        if sdf_tree:
+            sdf_tree.export_xml(f"{model_path}/model.sdf")
+
+        include = Include()
+        include.uri = f"model://{model_folder}"
+        world = self.model.get_world()
+        world.add_include(include)
+        world.to_sdf()
+
+        world.export_to_file(output_dir="./worlds", filename="generated_world.world")
+
+    def preview_mesh(self):
+        self.model.preview_mesh()

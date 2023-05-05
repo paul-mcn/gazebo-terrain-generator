@@ -2,6 +2,7 @@ from controllers.terrain_generator import TerrainGeneratorController
 from models.terrain_generator import TerrainGeneratorModel
 from views.base_view import BaseView
 
+
 def main():
     # Create Model, View, and Controller
     model = TerrainGeneratorModel()

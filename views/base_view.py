@@ -2,8 +2,8 @@ import tkinter as tk
 from util.app_config import settings
 
 # The application's panels
-from views.viewport_panel import Viewport
-from views.sidebar_panel import Sidebar
+from views.settings_panel import SettingsPanel
+from util.app_config import settings
 
 
 class BaseView(tk.Tk):
@@ -25,13 +25,10 @@ class BaseView(tk.Tk):
         # frame to hold all the panels, without it, weird things happen... man
         self.frame = tk.Frame(self)
         self.frame.pack(fill="both", expand=True)
-        
-        # Panels
-        self.sidebar = Sidebar(self.frame, controller)
-        self.viewport = Viewport(self.frame, controller)
 
+        # Panels
+        self.sidebar = SettingsPanel(self.frame, controller)
         self.sidebar.pack(side="left", fill="both", expand=True)
-        self.viewport.pack(side="left", fill="both", expand=True)
 
         # Shortcuts
         self.bind("<KeyPress>", lambda x: self.quit_app(x))
@@ -41,4 +38,3 @@ class BaseView(tk.Tk):
 
         if key.char == "q":
             self.destroy()
-

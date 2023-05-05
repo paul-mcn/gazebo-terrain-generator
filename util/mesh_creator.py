@@ -3,16 +3,18 @@ from noise import pnoise2
 import trimesh
 
 
-def create_perlin_mesh():
-    # Define the size and resolution of the plane
-    width = 10
-    height = 10
-    resolution = 50
-
-    # Define the Perlin noise parameters
-    scale = 10  # Controls the frequency of the noise
-    octaves = 2  # Controls the level of detail in the noise
-    persistence = 0.8  # Controls the roughness of the noise
+def create_perlin_mesh(
+    width=10, height=10, resolution=50, scale=10, octaves=2, persistence=0.8
+):
+    """
+    Define the Perlin noise parameters
+    width -- width of mesh. 10
+    height -- height of mesh 10
+    resolution -- resolutoin of mesh 50
+    scale -- Controls the frequency of the noise
+    octaves -- Controls the level of detail in the noise
+    persistence -- 0.8  Controls the roughness of the noise, should be between 0 and 1
+    """
 
     # Generate the Perlin noise map
     noise_map = np.zeros((resolution, resolution))
