@@ -1,10 +1,9 @@
 import tkinter as tk
-from pcg_gazebo.simulation import create_object, SimulationModel, World
+from pcg_gazebo.simulation import SimulationModel, World
 from util.app_config import settings
-from trimesh import Scene
-from trimesh.transformations import rotation_matrix
-import trimesh
 from util.mesh_creator import create_perlin_mesh
+from pcg_gazebo.parsers.sdf import create_sdf_element, Include
+from pathlib import Path
 
 class Viewport(tk.Frame):
     """Displays the 3D render of the mesh"""
@@ -52,44 +51,72 @@ class Viewport(tk.Frame):
         # Draw the edges of the meshes in the scene on the canvas
         self.canvas.delete("all")
         world = World(self.model_name)
-        model = self.create_model()
-        world.add_model(model.name, model)
+        # model = self.create_model()
+        # world.add_model(model.name, model)
+
+        # Create model path for gazebo
+        # model_dir = "/home/paul/repos/gazebo-terrain-generator/worlds"
+
+        # Create model folder
+        folder_name = "ground_mesh"
+        model_name = "model.obj"
+        model_path = Path(Path.home(), ".gazebo", "models", folder_name)
+        model_path.mkdir(exist_ok=True)
 
         mesh = create_perlin_mesh()
-        world.add_model("plane2", mesh)
-        scene = world.create_scene()
+        mesh.export(f"{model_path}/{model_name}")
 
+        mesh = create_sdf_element("mesh")
+        mesh.uri = f"model://{folder_name}/{model_name}" # type: ignore (ignore linting for pyright lsp)
 
-        # scene: Scene = model.create_scene()
-        # define a rotation matrix around the y-axis
-        # theta = 45.0
-        # R = rotation_matrix(theta, [0, 1, 0])
+        geometry = create_sdf_element("geometry")
+        geometry.mesh = mesh # type: ignore
 
-        # compute the center of the bounding box of the scene
-        # min_coord, max_coord = scene.bounds()
-        # center = (min_coord + max_coord) / 2
-        # scene.apply_transform(R)
+        collision = create_sdf_element("collision")
+        collision.children["geometry"] = geometry # type: ignore
 
-        # Rotate your mesh
-        # mesh = scene.rotate([1, 0, 0], angle=45)
-        # world.add_include
-        # for model in world.models:
-        #     print(type(model))
-        #     for face in model.mesh.faces:
-        #         vertices = model.mesh.vertices[face]
-        #         coords = [(v[0], v[1]) for v in vertices]
-        #         self.canvas.create_polygon(coords, fill='white', outline='black')
-        for mesh in scene.geometry.values():
-            vertices = mesh.vertices
-            for edge in mesh.edges:
-                start = vertices[edge[0]][:2] * scale + 400
-                end = vertices[edge[1]][:2] * scale + 400
-                self.canvas.create_line(
-                    start[0], start[1], end[0], end[1], fill="black"
-                )
+        options = [
+{
+            ""
+                }
 
-        # scene.show()
-        # self.canvas.create_polygon([150, 34, 432, 234], fill="green", outline="yellow")
+                ]
+        visual = create_sdf_element("visual")
+        if visual:
+            visual.children["geometry"] = geometry  
+            # print(visual.to_xml_as_str())
+
+        link = create_sdf_element("link")
+        if link:
+            link.children["collision"] = collision
+            link.children["visual"] = visual
+
+        model = create_sdf_element("model")
+        if model:
+            model.name = "ground_mesh1"  # type: ignore
+            model.pose = [0, 0, 0, 0, 0, 0] # type: ignore
+            model.static = True # type: ignore
+            model.children["link"] = link  
+
+        sdf = create_sdf_element("sdf")
+        if sdf:
+            sdf.children["model"] = model
+            sdf.export_xml(f"{model_path}/model.sdf") # type: ignore
+
+        include = Include()
+        include.uri = f"model://{folder_name}"
+        world.add_include(include)
+        world.to_sdf()
+        print(world)
+        # world.add_model("model", model)
+
+        world.export_to_file(output_dir="./worlds", filename="generated_world.world")
+        # print(world.to_sdf())
+
+        # mesh.export(file_type="sdf")
+        
+        # world.add_model("plane2", mesh)
+        # scene = world.create_scene()
 
     def create_preview_window(self):
         """Creates a preview window of the 3D mesh"""
