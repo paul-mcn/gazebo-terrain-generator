@@ -8,7 +8,6 @@ from util.sdf_creator import (
     create_sdf_tree,
 )
 from pcg_gazebo.parsers.sdf import Include
-from pcg_gazebo.simulation import Link
 from util.sdf_creator import create_sdf_tree
 
 
@@ -21,28 +20,28 @@ class TerrainGeneratorController:
         self.view = None
 
     def set_width(self, value):
-        self.model.set_width(int(value))
+        self.model.set_width(value)
 
     def set_height(self, value):
-        self.model.set_height(int(value))
+        self.model.set_height(value)
 
     def set_z(self, value):
-        self.model.set_z(int(value))
+        self.model.set_z(value)
 
     def set_max_angle(self, value):
-        self.model.set_max_angle(int(value))
+        self.model.set_max_angle(value)
 
     def set_foliage_density(self, value):
-        self.model.set_foliage_density(int(value))
+        self.model.set_foliage_density(value)
 
     def set_resolution(self, value):
-        self.model.set_resolution(int(value))
+        self.model.set_resolution(value)
 
     def set_scale(self, value):
-        self.model.set_scale(int(value))
+        self.model.set_scale(value)
 
     def set_octaves(self, value):
-        self.model.set_octaves(int(value))
+        self.model.set_octaves(value)
 
     def set_persistence(self, value):
         self.model.set_persistence(float(value))

@@ -1,7 +1,8 @@
 # from tkinter import filedialog
-import os
+# import os
 from pcg_gazebo.simulation import World
-from util.mesh_creator import create_perlin_mesh
+from util.noise_generators import perlin_noise
+from util.array_to_mesh import create_mesh
 
 
 class TerrainGeneratorModel:
@@ -20,8 +21,13 @@ class TerrainGeneratorModel:
         self._max_angle = 45  # not currently used
         self._foliage_density = 1  # not currently used
 
+        # Numpy procedural array
+        self._procedural_array = None
+        self._generate_procedural_array()
+
+        # Mesh
         self._mesh = None
-        self._init_mesh()
+        self._generate_mesh()
         self._world = World("world1")
 
     def set_width(self, value):
@@ -52,13 +58,14 @@ class TerrainGeneratorModel:
         self._foliage_density = value
 
     def _update_mesh(self):
-        self._mesh = create_perlin_mesh()
+        self._generate_procedural_array()
+        self._generate_mesh()
 
     def get_width(self):
-        return self._width 
+        return self._width
 
     def get_height(self):
-        return self._height 
+        return self._height
 
     def get_resolution(self):
         return self._resolution
@@ -86,19 +93,30 @@ class TerrainGeneratorModel:
 
     def preview_mesh(self):
         # reset the mesh
-        self._init_mesh()
+        self._generate_mesh()
         if self._mesh:
             self._mesh.show()
 
-    def _init_mesh(self):
-        self._mesh = create_perlin_mesh(
-            width=self._width,
-            height=self._height,
+    def _generate_procedural_array(self):
+        self._procedural_array = perlin_noise(
             resolution=self._resolution,
             scale=self._scale,
             octaves=self._octaves,
             persistence=self._persistence,
         )
+
+    def _generate_mesh(self):
+        """
+        Generates a trimesh using a noise_map, width, height and resolution.
+        `self._generate_procedural_array` needs to be called first.
+        """
+        mesh = create_mesh(
+            noise_map=self._procedural_array,
+            width=self._width,
+            height=self._height,
+            resolution=self._resolution,
+        )
+        self._mesh = mesh
 
     # TODO: implement custom paths
     # def open_file_explorer(self):

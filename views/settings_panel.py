@@ -16,7 +16,7 @@ class SettingsPanel(tk.Frame):
             height=settings.get_sidebar_height(), width=settings.get_sidebar_width()
         )
 
-        self.create_window()
+        self.create_inputs()
 
     def slider_control(self, label_text, command, min, max):
         """Create a slider with a label"""
@@ -39,7 +39,7 @@ class SettingsPanel(tk.Frame):
         # create a PIL Image object from the NumPy array
         image_array = np.random.randint(low=255, size=(100, 100), dtype=np.uint8)
 
-        # MUST BE SAVED UNDER SELF OTHERWISE PYTHON WILL DELETE IN GARBAGE COLLECTION
+        # MUST BE SAVED UNDER "SELF" OTHERWISE PYTHON WILL DELETE IN GARBAGE COLLECTION
         # DONT WORRY, THIS IS WORKING AS INTENDED https://bugs.python.org/issue632323
         self.photo_image = ImageTk.PhotoImage(Image.fromarray(image_array))
 
@@ -47,7 +47,7 @@ class SettingsPanel(tk.Frame):
         image_label = tk.Label(self, image=self.photo_image, width=100, height=100)
         image_label.pack(side="bottom")
 
-    def create_window(self):
+    def create_inputs(self):
         """Create the main window"""
 
         # add buttons and sliders to UI
@@ -88,6 +88,8 @@ class SettingsPanel(tk.Frame):
         persistence_val.set(self.controller.get_persistence())
         max_angle.set(self.controller.get_max_angle())
         foliage_val.set(self.controller.get_foliage_density())
+
+        self.noise_frame()
 
         button_frame = tk.Frame(self)
         button_frame.pack()
