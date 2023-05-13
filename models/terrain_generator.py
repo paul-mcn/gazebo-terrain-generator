@@ -23,7 +23,7 @@ class TerrainGeneratorModel:
 
         # Numpy procedural array
         self._procedural_array = None
-        self._generate_procedural_array()
+        self.generate_procedural_array()
 
         # Mesh
         self._mesh = None
@@ -46,19 +46,19 @@ class TerrainGeneratorModel:
         self._scale = int(value)
 
     def set_octaves(self, value):
-        self._octaves = value
+        self._octaves = int(value)
 
     def set_persistence(self, value):
-        self._persistence = value
+        self._persistence = float(value)
 
     def set_max_angle(self, value):
-        self._max_angle = value
+        self._max_angle = int(value)
 
     def set_foliage_density(self, value):
         self._foliage_density = value
 
     def _update_mesh(self):
-        self._generate_procedural_array()
+        self.generate_procedural_array()
         self._generate_mesh()
 
     def get_width(self):
@@ -91,13 +91,16 @@ class TerrainGeneratorModel:
     def get_foliage_density(self):
         return self._foliage_density
 
+    def get_procedural_array(self):
+        return self._procedural_array
+
     def preview_mesh(self):
         # reset the mesh
-        self._generate_mesh()
+        self._update_mesh()
         if self._mesh:
             self._mesh.show()
 
-    def _generate_procedural_array(self):
+    def generate_procedural_array(self):
         self._procedural_array = perlin_noise(
             resolution=self._resolution,
             scale=self._scale,
@@ -112,9 +115,9 @@ class TerrainGeneratorModel:
         """
         mesh = create_mesh(
             noise_map=self._procedural_array,
+            resolution=self._resolution,
             width=self._width,
             height=self._height,
-            resolution=self._resolution,
         )
         self._mesh = mesh
 

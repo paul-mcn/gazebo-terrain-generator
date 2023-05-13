@@ -35,17 +35,27 @@ class SettingsPanel(tk.Frame):
         slider.pack(side="left", fill="x")
         return slider
 
-    def noise_frame(self):
+    def procedural_array_to_image(self):
+        image_array = self.controller.get_procedural_array()
+
+        if image_array is None:
+            return np.array([])
+        shifted_array = image_array + np.abs(np.min(image_array))
+        img = Image.fromarray(shifted_array * 100).resize((200, 200))
+        return ImageTk.PhotoImage(img)
+
+    def noise_frame(self, image_array):
         # create a PIL Image object from the NumPy array
-        image_array = np.random.randint(low=255, size=(100, 100), dtype=np.uint8)
+        # image_array = np.random.randint(low=255, size=(100, 100), dtype=np.uint8)
 
         # MUST BE SAVED UNDER "SELF" OTHERWISE PYTHON WILL DELETE IN GARBAGE COLLECTION
         # DONT WORRY, THIS IS WORKING AS INTENDED https://bugs.python.org/issue632323
-        self.photo_image = ImageTk.PhotoImage(Image.fromarray(image_array))
+        self.photo_image = image_array
 
         # create a label widget with the PhotoImage
         image_label = tk.Label(self, image=self.photo_image, width=100, height=100)
         image_label.pack(side="bottom")
+        return image_label
 
     def create_inputs(self):
         """Create the main window"""
@@ -89,7 +99,15 @@ class SettingsPanel(tk.Frame):
         max_angle.set(self.controller.get_max_angle())
         foliage_val.set(self.controller.get_foliage_density())
 
-        self.noise_frame()
+        image_array = self.procedural_array_to_image()
+        self.image_label = self.noise_frame(image_array)
+
+        def get_img():
+            self.photo_image = self.procedural_array_to_image()
+            self.image_label.configure(image=self.photo_image, width=100, height=100)
+
+        # update noise image when values are changed
+        self.controller.set_on_value_change(get_img)
 
         button_frame = tk.Frame(self)
         button_frame.pack()

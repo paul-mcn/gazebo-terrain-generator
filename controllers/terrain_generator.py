@@ -1,7 +1,6 @@
 from pathlib import Path
 from pcg_gazebo.parsers.sdf_config import Author, Model, SDF, Version
-
-from pcg_gazebo.simulation.link import create_sdf_config_element
+# from pcg_gazebo.simulation.link import create_sdf_config_element
 from models.terrain_generator import TerrainGeneratorModel
 from util.sdf_creator import (
     create_model_sdf_elements,
@@ -11,6 +10,16 @@ from pcg_gazebo.parsers.sdf import Include
 from util.sdf_creator import create_sdf_tree
 
 
+def emit_value_change(func):
+    def wrapper(self, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        self.generate_procedural_array()
+        if self.on_value_change:
+            self.on_value_change()
+        return result
+    return wrapper
+
+
 class TerrainGeneratorController:
     """docstring for Controller."""
 
@@ -18,36 +27,50 @@ class TerrainGeneratorController:
         super(TerrainGeneratorController, self).__init__()
         self.model: TerrainGeneratorModel = model
         self.view = None
+        self.callback = None
+        self.on_value_change = None
 
+    @emit_value_change
     def set_width(self, value):
         self.model.set_width(value)
 
+    @emit_value_change
     def set_height(self, value):
         self.model.set_height(value)
 
+    @emit_value_change
     def set_z(self, value):
         self.model.set_z(value)
 
+    @emit_value_change
     def set_max_angle(self, value):
         self.model.set_max_angle(value)
 
+    @emit_value_change
     def set_foliage_density(self, value):
         self.model.set_foliage_density(value)
 
+    @emit_value_change
     def set_resolution(self, value):
         self.model.set_resolution(value)
 
+    @emit_value_change
     def set_scale(self, value):
         self.model.set_scale(value)
 
+    @emit_value_change
     def set_octaves(self, value):
         self.model.set_octaves(value)
 
+    @emit_value_change
     def set_persistence(self, value):
-        self.model.set_persistence(float(value))
+        self.model.set_persistence(value)
 
     def set_view(self, view):
         self.view = view
+
+    def set_on_value_change(self, callback):
+        self.on_value_change = callback
 
     def get_height(self):
         return self.model.get_height()
@@ -76,6 +99,9 @@ class TerrainGeneratorController:
     def get_foliage_density(self):
         return self.model.get_foliage_density()
 
+    def get_procedural_array(self):
+        return self.model.get_procedural_array()
+
     def export_mesh(self, model_folder="ground_mesh", model_name="model.obj"):
         model_path = Path(Path.home(), ".gazebo", "models", model_folder)
         model_path.mkdir(exist_ok=True)
@@ -84,10 +110,10 @@ class TerrainGeneratorController:
         if mesh is None:
             return print("Erorr: mesh does not exist")
 
+        # mesh mush be exported first so the path exists
         mesh.export(f"{model_path}/{model_name}")
-
+        # create a link to the exported mesh
         uri = f"model://{model_folder}/{model_name}"
-
         sdf_elements = create_model_sdf_elements(uri)
         model_sdf = create_sdf_tree(sdf_elements)
         if model_sdf:
@@ -114,3 +140,7 @@ class TerrainGeneratorController:
 
     def preview_mesh(self):
         self.model.preview_mesh()
+
+    def generate_procedural_array(self):
+        self.model.generate_procedural_array()
+

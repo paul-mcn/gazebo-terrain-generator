@@ -1,8 +1,8 @@
 import numpy as np
-from scipy.spatial import Delaunay
+# from scipy.spatial import Delaunay
 from trimesh import Trimesh
 
-def create_vertices(noise_map, resolution, width=10, height=10):
+def create_vertices(noise_map, resolution=50, width=10, height=10):
     """
     create verticies using a noise map
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
@@ -21,7 +21,7 @@ def create_vertices(noise_map, resolution, width=10, height=10):
     return vertices
 
 
-def create_faces(resolution):
+def create_faces(resolution=50):
     """ 
     Creates faces
     `resolution` -- the resolution needed for the mesh
@@ -42,11 +42,13 @@ def create_faces(resolution):
             p2 = i * resolution + j + 1
             p3 = (i + 1) * resolution + j + 1
             p4 = (i + 1) * resolution + j
+            # This creates two new faces using the four vertices we calculated
+            # aka triangulation
             faces.extend([[p1, p2, p3], [p1, p3, p4]])
 
     return faces
 
-def create_mesh(noise_map, resolution, width, height):
+def create_mesh(noise_map, resolution=50, width=10, height=10):
     """
     Create a trimesh from the vertices and faces
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
