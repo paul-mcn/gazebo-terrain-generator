@@ -41,7 +41,7 @@ class SettingsPanel(tk.Frame):
         if image_array is None:
             return np.array([])
         shifted_array = image_array + np.abs(np.min(image_array))
-        img = Image.fromarray(shifted_array * 100).resize((200, 200))
+        img = Image.fromarray(shifted_array * 100).resize((300, 300))
         return ImageTk.PhotoImage(img)
 
     def noise_frame(self, image_array):
@@ -53,9 +53,14 @@ class SettingsPanel(tk.Frame):
         self.photo_image = image_array
 
         # create a label widget with the PhotoImage
-        image_label = tk.Label(self, image=self.photo_image, width=100, height=100)
-        image_label.pack(side="bottom")
+        image_label = tk.Label(self, image=self.photo_image, width=300, height=300)
+        image_label.pack(side="right")
         return image_label
+
+    def on_value_change(self):
+        self.photo_image = self.procedural_array_to_image()
+        self.image_label.configure(image=self.photo_image, width=300, height=300) # pylint: disable=all
+
 
     def create_inputs(self):
         """Create the main window"""
@@ -102,12 +107,9 @@ class SettingsPanel(tk.Frame):
         image_array = self.procedural_array_to_image()
         self.image_label = self.noise_frame(image_array)
 
-        def get_img():
-            self.photo_image = self.procedural_array_to_image()
-            self.image_label.configure(image=self.photo_image, width=100, height=100)
-
+        
         # update noise image when values are changed
-        self.controller.set_on_value_change(get_img)
+        self.controller.set_on_value_change(self.on_value_change)
 
         button_frame = tk.Frame(self)
         button_frame.pack()
@@ -127,3 +129,4 @@ class SettingsPanel(tk.Frame):
 
     def preview_mesh(self):
         self.controller.preview_mesh()
+
