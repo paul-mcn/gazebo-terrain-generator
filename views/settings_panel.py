@@ -18,7 +18,7 @@ class SettingsPanel(tk.Frame):
 
         self.create_inputs()
 
-    def slider_control(self, frame, label_text, command, min, max):
+    def slider_control(self, frame, label_text, command, min, max, **args):
         """Create a slider with a label"""
         # Create a container to hold the label and slider
         slider_frame = tk.Frame(frame)
@@ -30,7 +30,12 @@ class SettingsPanel(tk.Frame):
 
         # create horizontal slider
         slider = tk.Scale(
-            slider_frame, from_=min, to=max, orient=tk.HORIZONTAL, command=command
+            slider_frame,
+            from_=min,
+            to=max,
+            orient=tk.HORIZONTAL,
+            command=command,
+            **args,
         )
         slider.pack(fill="x")
         return slider
@@ -39,7 +44,7 @@ class SettingsPanel(tk.Frame):
         image_array = self.controller.get_procedural_array()
 
         if image_array is None:
-            return np.array([])
+            return ImageTk.PhotoImage(np.array([]))
         shifted_array = image_array + np.abs(np.min(image_array))
         img = Image.fromarray(shifted_array * 100).resize((300, 300))
         return ImageTk.PhotoImage(img)
@@ -89,6 +94,7 @@ class SettingsPanel(tk.Frame):
             command=self.controller.set_persistence,
             min=0,
             max=1,
+            resolution=0.1,
         )
         max_angle = self.slider_control(
             slider_frame,
@@ -139,4 +145,3 @@ class SettingsPanel(tk.Frame):
 
     def preview_mesh(self):
         self.controller.preview_mesh()
-
