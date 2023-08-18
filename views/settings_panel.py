@@ -70,27 +70,27 @@ class SettingsPanel(tk.Frame):
         slider_frame.pack(fill="y", side="left")
         # add buttons and sliders to UI
         width_val = self.slider_control(
-            slider_frame, "width", command=self.controller.set_width, min=0, max=100
+            slider_frame, "Width", command=self.controller.set_width, min=1, max=100
         )
         height_val = self.slider_control(
-            slider_frame, "height", command=self.controller.set_height, min=0, max=100
+            slider_frame, "Height", command=self.controller.set_height, min=1, max=100
         )
         resolution_val = self.slider_control(
             slider_frame,
-            "resolution",
+            "Resolution",
             command=self.controller.set_resolution,
-            min=0,
+            min=2,
             max=200,
         )
         scale_val = self.slider_control(
-            slider_frame, "scale", command=self.controller.set_scale, min=1, max=100
+            slider_frame, "Scale", command=self.controller.set_scale, min=1, max=100
         )
         octaves_val = self.slider_control(
-            slider_frame, "octaves", command=self.controller.set_octaves, min=1, max=25
+            slider_frame, "Octaves", command=self.controller.set_octaves, min=1, max=25
         )
         persistence_val = self.slider_control(
             slider_frame,
-            "persistence",
+            "Persistence",
             command=self.controller.set_persistence,
             min=0,
             max=1,
@@ -103,10 +103,17 @@ class SettingsPanel(tk.Frame):
             min=0,
             max=90,
         )
-        foliage_val = self.slider_control(
+        tree_val = self.slider_control(
             slider_frame,
-            "Foliage density",
-            command=self.controller.set_foliage_density,
+            "Tree density",
+            command=self.controller.set_tree_density,
+            min=0,
+            max=90,
+        )
+        total_obstacles = self.slider_control(
+            slider_frame,
+            "Total obstacles",
+            command=self.controller.set_tree_density,
             min=0,
             max=90,
         )
@@ -119,7 +126,8 @@ class SettingsPanel(tk.Frame):
         octaves_val.set(self.controller.get_octaves())
         persistence_val.set(self.controller.get_persistence())
         max_angle.set(self.controller.get_max_angle())
-        foliage_val.set(self.controller.get_foliage_density())
+        tree_val.set(self.controller.get_tree_density())
+        total_obstacles.set(self.controller.get_total_obstacles())
 
         image_array = self.procedural_array_to_image()
         self.image_label = self.noise_frame(image_array)

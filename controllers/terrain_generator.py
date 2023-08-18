@@ -47,8 +47,12 @@ class TerrainGeneratorController:
         self.model.set_max_angle(value)
 
     @emit_value_change
-    def set_foliage_density(self, value):
-        self.model.set_foliage_density(value)
+    def set_tree_density(self, value):
+        self.model.set_tree_density(value)
+
+    @emit_value_change
+    def set_total_obstacles(self, value):
+        self.model.set_total_obstacles(value)
 
     @emit_value_change
     def set_resolution(self, value):
@@ -96,8 +100,11 @@ class TerrainGeneratorController:
     def get_max_angle(self):
         return self.model.get_max_angle()
 
-    def get_foliage_density(self):
-        return self.model.get_foliage_density()
+    def get_total_obstacles(self):
+        return self.model.get_total_obstacles()
+
+    def get_tree_density(self):
+        return self.model.get_tree_density()
 
     def get_procedural_array(self):
         return self.model.get_procedural_array()

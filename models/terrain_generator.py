@@ -19,7 +19,8 @@ class TerrainGeneratorModel:
         self._octaves = 2
         self._persistence = 0.8
         self._max_angle = 45  # not currently used
-        self._foliage_density = 1  # not currently used
+        self._tree_density = 1  # not currently used
+        self._total_obstacles = 1  # not currently used
 
         # Numpy procedural array
         self._procedural_array = None
@@ -31,10 +32,10 @@ class TerrainGeneratorModel:
         self._world = World("world1")
 
     def set_width(self, value):
-        self._width = int(value)
+        self._width = max(int(value), 1)
 
     def set_height(self, value):
-        self._height = int(value)
+        self._height = max(int(value), 1)
 
     def set_z(self, value):
         self._z = int(value)
@@ -54,8 +55,11 @@ class TerrainGeneratorModel:
     def set_max_angle(self, value):
         self._max_angle = int(value)
 
-    def set_foliage_density(self, value):
-        self._foliage_density = value
+    def set_tree_density(self, value):
+        self._tree_density = float(value)
+
+    def set_total_obstacles(self, value):
+        self._total_obstacles = value
 
     def _update_mesh(self):
         self.generate_procedural_array()
@@ -88,8 +92,11 @@ class TerrainGeneratorModel:
     def get_max_angle(self):
         return self._max_angle
 
-    def get_foliage_density(self):
-        return self._foliage_density
+    def get_tree_density(self):
+        return self._tree_density
+
+    def get_total_obstacles(self):
+        return self._total_obstacles
 
     def get_procedural_array(self):
         return self._procedural_array
