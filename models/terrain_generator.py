@@ -20,6 +20,7 @@ class TerrainGeneratorModel:
         self._persistence = 0.8
         self._max_angle = 45  # not currently used
         self._tree_density = 1  # not currently used
+        self._rock_density = 1  # not currently used
         self._total_obstacles = 1  # not currently used
 
         # Numpy procedural array
@@ -58,6 +59,9 @@ class TerrainGeneratorModel:
     def set_tree_density(self, value):
         self._tree_density = float(value)
 
+    def set_rock_density(self, value):
+        self._rock_density = float(value)
+
     def set_total_obstacles(self, value):
         self._total_obstacles = value
 
@@ -94,6 +98,9 @@ class TerrainGeneratorModel:
 
     def get_tree_density(self):
         return self._tree_density
+
+    def get_rock_density(self):
+        return self._rock_density
 
     def get_total_obstacles(self):
         return self._total_obstacles

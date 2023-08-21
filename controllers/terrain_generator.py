@@ -1,5 +1,6 @@
 from pathlib import Path
 from pcg_gazebo.parsers.sdf_config import Author, Model, SDF, Version
+
 # from pcg_gazebo.simulation.link import create_sdf_config_element
 from models.terrain_generator import TerrainGeneratorModel
 from util.sdf_creator import (
@@ -17,6 +18,7 @@ def emit_value_change(func):
         if self.on_value_change:
             self.on_value_change()
         return result
+
     return wrapper
 
 
@@ -49,6 +51,10 @@ class TerrainGeneratorController:
     @emit_value_change
     def set_tree_density(self, value):
         self.model.set_tree_density(value)
+
+    @emit_value_change
+    def set_rock_density(self, value):
+        self.model.set_rock_density(value)
 
     @emit_value_change
     def set_total_obstacles(self, value):
@@ -106,13 +112,21 @@ class TerrainGeneratorController:
     def get_tree_density(self):
         return self.model.get_tree_density()
 
+    def get_rock_density(self):
+        return self.model.get_rock_density()
+
     def get_procedural_array(self):
         return self.model.get_procedural_array()
 
     def export_mesh(self, model_folder="ground_mesh", model_name="model.obj"):
         model_path = Path(Path.home(), ".gazebo", "models", model_folder)
         model_path.mkdir(exist_ok=True)
-
+        
+        # TODO: generate collisions for mesh.
+        # Maybe the best way to do this is to create a separate trimesh then combine it with the model trimesh on export
+        # This is because: for the max_angle function, it must only iterate over the world object, and not the obstacles
+        # All collisions height will have to update after the model is udpated
+        
         mesh = self.model.get_mesh()
         if mesh is None:
             return print("Erorr: mesh does not exist")
@@ -150,4 +164,3 @@ class TerrainGeneratorController:
 
     def generate_procedural_array(self):
         self.model.generate_procedural_array()
-

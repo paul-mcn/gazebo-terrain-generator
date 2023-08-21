@@ -1,13 +1,15 @@
 import numpy as np
+
 # from scipy.spatial import Delaunay
-from trimesh import Trimesh
+from trimesh import Trimesh, creation, util, transformations
+
 
 def create_vertices(noise_map, resolution=50, width=10, height=10):
     """
     create verticies using a noise map
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
-    `resolution` -- the resolution variable is used in conjunction with the width and height 
-    variables to create a regular grid of points using np.meshgrid() function. 
+    `resolution` -- the resolution variable is used in conjunction with the width and height
+    variables to create a regular grid of points using np.meshgrid() function.
     The total number of vertices in the mesh will be resolution squared.
     `width` -- width of mesh. (default=10)
     `height` -- height of mesh (default=10)
@@ -22,7 +24,7 @@ def create_vertices(noise_map, resolution=50, width=10, height=10):
 
 
 def create_faces(resolution=50):
-    """ 
+    """
     Creates faces
     `resolution` -- the resolution needed for the mesh
     """
@@ -30,12 +32,12 @@ def create_faces(resolution=50):
     faces = []
     # The -1 is used here because we want to create quads (4 vertices per face),
     # and the last row and column of vertices will not be used for creating faces
-    for i in range(resolution - 1): 
-        # Again, the -1 is used because we want to create quads. 
+    for i in range(resolution - 1):
+        # Again, the -1 is used because we want to create quads.
         for j in range(resolution - 1):
-            # This calculates the index of the first vertex of the current quad 
+            # This calculates the index of the first vertex of the current quad
             # using the formula i * resolution + j.
-            # Since each row contains resolution vertices, 
+            # Since each row contains resolution vertices,
             # we multiply i by resolution to get the start index of the current row,
             # and then add j to get the index of the current vertex within that row.
             p1 = i * resolution + j
@@ -47,6 +49,7 @@ def create_faces(resolution=50):
             faces.extend([[p1, p2, p3], [p1, p3, p4]])
 
     return faces
+
 
 def create_mesh(noise_map, resolution=50, width=10, height=10):
     """
@@ -61,5 +64,17 @@ def create_mesh(noise_map, resolution=50, width=10, height=10):
 
     # Create the mesh
     mesh = Trimesh(vertices=vertices, faces=faces)
-    return mesh
 
+    # Create individual box meshes using the dimensions
+    box_meshes = []
+    for _ in range(20):
+        bias = np.array([height, width, 0.2]) # bias in x y or z direction
+        translation = np.random.rand(3) * bias - bias / 2  # Generate random translation
+        transform = transformations.translation_matrix(translation)
+        c = creation.cylinder(radius=0.1, height=np.random.rand(1), transform=transform)
+        box_meshes.append(c)
+
+    # Combine the individual box meshes into a single mesh
+    combined_mesh = util.concatenate(mesh, box_meshes)
+
+    return combined_mesh

@@ -60,6 +60,7 @@ class SettingsPanel(tk.Frame):
         return image_label
 
     def on_value_change(self):
+        # update image in viewport
         self.photo_image = self.procedural_array_to_image()
         self.image_label.configure(image=self.photo_image, width=300, height=300)
 
@@ -108,7 +109,14 @@ class SettingsPanel(tk.Frame):
             "Tree density",
             command=self.controller.set_tree_density,
             min=0,
-            max=90,
+            max=100,
+        )
+        rock_val= self.slider_control(
+            slider_frame,
+            "Rock density",
+            command=self.controller.set_rock_density,
+            min=0,
+            max=100,
         )
         total_obstacles = self.slider_control(
             slider_frame,
@@ -127,6 +135,7 @@ class SettingsPanel(tk.Frame):
         persistence_val.set(self.controller.get_persistence())
         max_angle.set(self.controller.get_max_angle())
         tree_val.set(self.controller.get_tree_density())
+        rock_val.set(self.controller.get_rock_density())
         total_obstacles.set(self.controller.get_total_obstacles())
 
         image_array = self.procedural_array_to_image()
