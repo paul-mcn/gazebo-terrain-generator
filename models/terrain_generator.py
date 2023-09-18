@@ -69,7 +69,7 @@ class TerrainGeneratorModel:
     def set_total_obstacles(self, value):
         self._total_obstacles = int(value)
 
-    def _update_mesh(self):
+    def update_mesh(self):
         self.generate_procedural_array()
         self._generate_mesh()
 
@@ -109,6 +109,9 @@ class TerrainGeneratorModel:
     def get_total_obstacles(self):
         return self._total_obstacles
 
+    def get_obstacles(self):
+        return self._obstacle_items
+
     def get_mesh_color(self, normalise=False):
         if normalise:
             # just normalise the red, green and blue channels, not the alpha
@@ -121,10 +124,9 @@ class TerrainGeneratorModel:
 
     def preview_mesh(self):
         # reset the mesh
-        self._update_mesh()
+        self.update_mesh()
         if self._mesh:
             world = scene.scene.Scene(self._mesh)
-            print(self._obstacle_items)
             for geo in self._obstacle_items:
                 world.add_geometry(geo)
             world.show()
@@ -163,7 +165,6 @@ class TerrainGeneratorModel:
             resolution=self._resolution,
             width=self._width,
             height=self._height,
-            color=self._mesh_rgba,
         )
         self._mesh = mesh
         if self._total_obstacles > 0:
@@ -171,11 +172,7 @@ class TerrainGeneratorModel:
             x_displacement = [-self._width // 2, self._width // 2]
             y_displacement = [-self._height // 2, self._height // 2]
             self._obstacle_items = create_obstacles(
-                rock_count,
-                tree_count,
-                x_displacement,
-                y_displacement,
-                mesh
+                rock_count, tree_count, x_displacement, y_displacement, mesh
             )
 
     # TODO: implement custom paths

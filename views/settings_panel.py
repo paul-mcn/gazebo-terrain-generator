@@ -166,6 +166,7 @@ class SettingsPanel(tk.Frame):
         # update procedurally generated image when values change
         self.controller.set_on_value_change(self.on_value_change)
 
+
         button_frame = tk.Frame(self)
         button_frame.pack()
         # add export functionality
@@ -179,13 +180,15 @@ class SettingsPanel(tk.Frame):
         )
         preview_btn.pack(side="left", pady=10)
 
+        save_button = tk.Button(
+            button_frame,
+            text="Save settings",
+            command=self.controller.save_generator_settings,
+        )
+        save_button.pack(side="left", pady=10)
+
     def export_world(self):
-        # export ground mesh
-        # self.controller.export_mesh()
-        # export tree model
-        # self.controller.export_mesh()
-        # export rock model
-        # self.controller.export_mesh()
+        self.controller.export_collision_objects()
         self.controller.export_world()
 
     def preview_mesh(self):

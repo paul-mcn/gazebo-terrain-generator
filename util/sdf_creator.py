@@ -1,7 +1,93 @@
 from pcg_gazebo.parsers.sdf import create_sdf_element
 
 
-def create_model_sdf_elements(mesh_uri, color=[0, 0.5, 0, 1]):
+def create_geometry_sdf(mesh_uri, scale, submesh_name=False):
+    mesh = create_sdf_element("mesh")
+    geometry = create_sdf_element("geometry")
+    mesh.uri = mesh_uri  # type: ignore
+    mesh.scale = scale  # type: ignore
+    if submesh_name:
+        submesh = create_sdf_element("submesh")
+        submesh.name = submesh_name  # type: ignore
+        mesh.children["submesh"] = submesh  # type: ignore
+    geometry.mesh = mesh  # type: ignore
+    return geometry
+
+
+def create_tree_sdf(
+    mesh_uri, script_uris, model_name, model_pose, material_names, scale
+):
+    collision = create_sdf_element("collision")
+    link = create_sdf_element("link")
+    model = create_sdf_element("model")
+    link.children["visual"] = []
+    for material_name in material_names:
+        uri = create_sdf_element("uri")
+        uri2 = create_sdf_element("uri")
+        geometry = create_sdf_element("geometry")
+        script = create_sdf_element("script")
+        material = create_sdf_element("material")
+        visual = create_sdf_element("visual")
+        submesh_name = material_name.split("/")[-1]
+        geometry = create_geometry_sdf(mesh_uri, scale, submesh_name)
+        material.reset(with_optional_elements=True)  # type: ignore
+        script.name = material_name  # type: ignore
+        uri.value = script_uris[0]  # type: ignore
+        uri2.value = script_uris[1]  # type: ignore
+        script.children["uri"] = [uri, uri2]  # type: ignore
+        material.children["script"] = script  # type: ignore
+        visual.children["geometry"] = geometry  # type: ignore
+        visual.children["material"] = material  # type: ignore
+        visual.name = submesh_name  # type: ignore
+        link.children["visual"].append(visual)  # type: ignore
+
+    geometry = create_geometry_sdf(mesh_uri, scale)
+    collision.children["geometry"] = geometry  # type: ignore
+    link.children["collision"] = collision  # type: ignore
+    model.children["link"] = link  # type: ignore
+    model.name = model_name  # type: ignore
+    model.pose = model_pose  # type: ignore
+    model.static = True  # type: ignore
+    return model
+
+
+def create_rock_sdf(
+    mesh_uri, script_uris, model_name, model_pose, material_name, scale
+):
+    uri = create_sdf_element("uri")
+    uri2 = create_sdf_element("uri")
+    script = create_sdf_element("script")
+    material = create_sdf_element("material")
+    visual = create_sdf_element("visual")
+    collision = create_sdf_element("collision")
+    link = create_sdf_element("link")
+    model = create_sdf_element("model")
+    geometry = create_geometry_sdf(mesh_uri, scale)
+    material.reset(with_optional_elements=True)  # type: ignore
+    script.name = material_name  # type: ignore
+    # for objects that dont have custom materials, just use the gazebo default materials
+    if script_uris and len(script_uris) >= 2:
+        uri.value = script_uris[0]  # type: ignore
+        uri2.value = script_uris[1]  # type: ignore
+        script.children["uri"] = [uri, uri2]  # type: ignore
+    else:
+        uri.value = "file://media/materials/scripts/gazebo.material"
+        script.children["uri"] = uri
+    material.children["script"] = script  # type: ignore
+    visual.children["geometry"] = geometry  # type: ignore
+    visual.children["material"] = material  # type: ignore
+    visual.name = "rock"  # type: ignore
+    collision.children["geometry"] = geometry  # type: ignore
+    link.children["collision"] = collision  # type: ignore
+    link.children["visual"] = visual  # type: ignore
+    model.children["link"] = link  # type: ignore
+    model.name = model_name  # type: ignore
+    model.pose = model_pose  # type: ignore
+    model.static = True  # type: ignore
+    return model
+
+
+def create_ground_mesh_sdf_elements(mesh_uri, color=[0, 0.5, 0, 1]):
     # list should be in order from child to parent
     sdf_elements = [
         {"tag": "mesh", "opts": {"uri": mesh_uri}},
@@ -19,7 +105,8 @@ def create_model_sdf_elements(mesh_uri, color=[0, 0.5, 0, 1]):
                 "static": True,
             },
         },
-        {"tag": "sdf", "children": ["model"]},
+        {"tag": "world", "children": ["model"]},
+        {"tag": "sdf", "children": ["world"]},
     ]
     return sdf_elements
 
