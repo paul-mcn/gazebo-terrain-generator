@@ -68,29 +68,51 @@ class SettingsPanel(tk.Frame):
         """Create the main window"""
 
         slider_frame = tk.Frame(self)
+        terrain_surface_frame = tk.LabelFrame(slider_frame, text="Terrain Surface")
+        obstacles_frame = tk.LabelFrame(slider_frame, text="Obstacles")
+
         slider_frame.pack(fill="y", side="left")
+        terrain_surface_frame.pack(fill="x")
+        obstacles_frame.pack(fill="x")
+
         # add buttons and sliders to UI
         width_val = self.slider_control(
-            slider_frame, "Width", command=self.controller.set_width, min=1, max=100
+            terrain_surface_frame,
+            "Width",
+            command=self.controller.set_width,
+            min=1,
+            max=100,
         )
         height_val = self.slider_control(
-            slider_frame, "Height", command=self.controller.set_height, min=1, max=100
+            terrain_surface_frame,
+            "Height",
+            command=self.controller.set_height,
+            min=1,
+            max=100,
         )
         resolution_val = self.slider_control(
-            slider_frame,
+            terrain_surface_frame,
             "Resolution",
             command=self.controller.set_resolution,
             min=2,
             max=200,
         )
         scale_val = self.slider_control(
-            slider_frame, "Scale", command=self.controller.set_scale, min=1, max=100
+            terrain_surface_frame,
+            "Scale",
+            command=self.controller.set_scale,
+            min=1,
+            max=100,
         )
         octaves_val = self.slider_control(
-            slider_frame, "Octaves", command=self.controller.set_octaves, min=1, max=25
+            terrain_surface_frame,
+            "Octaves",
+            command=self.controller.set_octaves,
+            min=1,
+            max=25,
         )
         persistence_val = self.slider_control(
-            slider_frame,
+            terrain_surface_frame,
             "Persistence",
             command=self.controller.set_persistence,
             min=0,
@@ -98,30 +120,30 @@ class SettingsPanel(tk.Frame):
             resolution=0.1,
         )
         max_angle = self.slider_control(
-            slider_frame,
+            terrain_surface_frame,
             "Max angle",
             command=self.controller.set_max_angle,
             min=0,
             max=90,
         )
         tree_val = self.slider_control(
-            slider_frame,
-            "Tree density",
+            obstacles_frame,
+            "Tree density %",
             command=self.controller.set_tree_density,
             min=0,
             max=100,
         )
-        rock_val= self.slider_control(
-            slider_frame,
-            "Rock density",
+        rock_val = self.slider_control(
+            obstacles_frame,
+            "Rock density %",
             command=self.controller.set_rock_density,
             min=0,
             max=100,
         )
         total_obstacles = self.slider_control(
-            slider_frame,
-            "Total obstacles",
-            command=self.controller.set_tree_density,
+            obstacles_frame,
+            "Total",
+            command=self.controller.set_total_obstacles,
             min=0,
             max=90,
         )
@@ -148,7 +170,7 @@ class SettingsPanel(tk.Frame):
         button_frame.pack()
         # add export functionality
         export_btn = tk.Button(
-            button_frame, text="Export mesh", command=self.export_mesh
+            button_frame, text="Export world", command=self.export_world
         )
         export_btn.pack(side="left", pady=10)
 
@@ -157,8 +179,14 @@ class SettingsPanel(tk.Frame):
         )
         preview_btn.pack(side="left", pady=10)
 
-    def export_mesh(self):
-        self.controller.export_mesh()
+    def export_world(self):
+        # export ground mesh
+        # self.controller.export_mesh()
+        # export tree model
+        # self.controller.export_mesh()
+        # export rock model
+        # self.controller.export_mesh()
+        self.controller.export_world()
 
     def preview_mesh(self):
         self.controller.preview_mesh()

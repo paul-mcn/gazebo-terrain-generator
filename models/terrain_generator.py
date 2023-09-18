@@ -2,7 +2,9 @@
 # import os
 from pcg_gazebo.simulation import World
 from util.noise_generators import perlin_noise
-from util.array_to_mesh import create_mesh
+from util.array_to_mesh import create_ground_mesh, create_obstacles
+import numpy as np
+from trimesh import scene
 
 
 class TerrainGeneratorModel:
@@ -19,9 +21,11 @@ class TerrainGeneratorModel:
         self._octaves = 2
         self._persistence = 0.8
         self._max_angle = 45  # not currently used
-        self._tree_density = 1  # not currently used
-        self._rock_density = 1  # not currently used
-        self._total_obstacles = 1  # not currently used
+        self._tree_density = 1
+        self._rock_density = 1
+        self._total_obstacles = 1
+        self._mesh_rgba = np.array([0, 128, 0, 1])  # the color the mesh will be
+        self._obstacle_items = []
 
         # Numpy procedural array
         self._procedural_array = None
@@ -63,7 +67,7 @@ class TerrainGeneratorModel:
         self._rock_density = float(value)
 
     def set_total_obstacles(self, value):
-        self._total_obstacles = value
+        self._total_obstacles = int(value)
 
     def _update_mesh(self):
         self.generate_procedural_array()
@@ -105,6 +109,13 @@ class TerrainGeneratorModel:
     def get_total_obstacles(self):
         return self._total_obstacles
 
+    def get_mesh_color(self, normalise=False):
+        if normalise:
+            # just normalise the red, green and blue channels, not the alpha
+            rgb = self._mesh_rgba[:3] / 255
+            return np.append(rgb, self._mesh_rgba[-1])
+        return self._mesh_rgba
+
     def get_procedural_array(self):
         return self._procedural_array
 
@@ -112,7 +123,11 @@ class TerrainGeneratorModel:
         # reset the mesh
         self._update_mesh()
         if self._mesh:
-            self._mesh.show()
+            world = scene.scene.Scene(self._mesh)
+            print(self._obstacle_items)
+            for geo in self._obstacle_items:
+                world.add_geometry(geo)
+            world.show()
 
     def generate_procedural_array(self):
         self._procedural_array = perlin_noise(
@@ -122,18 +137,46 @@ class TerrainGeneratorModel:
             persistence=self._persistence,
         )
 
+    def get_obstacle_count(self):
+        """
+        Returns the count of obstacles based on obstacle type
+        @returns [rock_count, tree_count]
+        """
+        normalised_percentage = self._rock_density + self._tree_density
+        if normalised_percentage == 0:
+            return [0, 0]
+        rock_count = np.rint(
+            self._total_obstacles * self._rock_density / normalised_percentage
+        ).astype(int)
+        tree_count = np.rint(
+            self._total_obstacles * self._tree_density / normalised_percentage
+        ).astype(int)
+        return [rock_count, tree_count]
+
     def _generate_mesh(self):
         """
         Generates a trimesh using a noise_map, width, height and resolution.
         `self._generate_procedural_array` needs to be called first.
         """
-        mesh = create_mesh(
+        mesh = create_ground_mesh(
             noise_map=self._procedural_array,
             resolution=self._resolution,
             width=self._width,
             height=self._height,
+            color=self._mesh_rgba,
         )
         self._mesh = mesh
+        if self._total_obstacles > 0:
+            rock_count, tree_count = self.get_obstacle_count()
+            x_displacement = [-self._width // 2, self._width // 2]
+            y_displacement = [-self._height // 2, self._height // 2]
+            self._obstacle_items = create_obstacles(
+                rock_count,
+                tree_count,
+                x_displacement,
+                y_displacement,
+                mesh
+            )
 
     # TODO: implement custom paths
     # def open_file_explorer(self):

@@ -1,0 +1,29 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="rock">
+    <static>true</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>model://rock/meshes/Rock1.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name="rock">
+        <geometry>
+          <mesh>
+            <uri>model://rock/meshes/Rock1.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://rock/materials/scripts/</uri>
+            <uri>model://rock/materials/textures/</uri>
+						<name>Rock</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

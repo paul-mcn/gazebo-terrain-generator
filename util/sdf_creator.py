@@ -1,12 +1,14 @@
 from pcg_gazebo.parsers.sdf import create_sdf_element
 
 
-def create_model_sdf_elements(mesh_uri):
+def create_model_sdf_elements(mesh_uri, color=[0, 0.5, 0, 1]):
+    # list should be in order from child to parent
     sdf_elements = [
         {"tag": "mesh", "opts": {"uri": mesh_uri}},
         {"tag": "geometry", "children": ["mesh"]},
         {"tag": "collision", "children": ["geometry"]},
-        {"tag": "visual", "children": ["geometry"]},
+        {"tag": "material", "opts": {"ambient": color}},
+        {"tag": "visual", "children": ["geometry", "material"]},
         {"tag": "link", "children": ["collision", "visual"]},
         {
             "tag": "model",
@@ -52,7 +54,7 @@ def create_and_set_sdf_element(element, cache: dict):
         return print("Woops, something went wrong when trying to create sdf element")
 
     # Save element in flat object for fast lookup
-    cache[tag] = sdf_el  # type: ignore
+    cache[tag] = sdf_el
 
     # use element options
     opts = element.get("opts")

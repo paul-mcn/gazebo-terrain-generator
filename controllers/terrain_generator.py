@@ -1,14 +1,11 @@
 from pathlib import Path
+from pcg_gazebo.parsers.sdf import Include
 from pcg_gazebo.parsers.sdf_config import Author, Model, SDF, Version
 
 # from pcg_gazebo.simulation.link import create_sdf_config_element
 from models.terrain_generator import TerrainGeneratorModel
-from util.sdf_creator import (
-    create_model_sdf_elements,
-    create_sdf_tree,
-)
-from pcg_gazebo.parsers.sdf import Include
-from util.sdf_creator import create_sdf_tree
+from util.export_terrain import export_ground_mesh, export_world
+from util.sdf_creator import create_model_sdf_elements, create_sdf_tree
 
 
 def emit_value_change(func):
@@ -118,23 +115,26 @@ class TerrainGeneratorController:
     def get_procedural_array(self):
         return self.model.get_procedural_array()
 
-    def export_mesh(self, model_folder="ground_mesh", model_name="model.obj"):
+    def export_mesh(self, mesh_name="ground_mesh"):
+        export_ground_mesh(
+            self.model.get_mesh(),
+            mesh_name,
+            color=self.model.get_mesh_color(normalise=True),
+        )
+
+
+    def export_world(self, model_folder="ground_mesh1"):
         model_path = Path(Path.home(), ".gazebo", "models", model_folder)
         model_path.mkdir(exist_ok=True)
-        
-        # TODO: generate collisions for mesh.
-        # Maybe the best way to do this is to create a separate trimesh then combine it with the model trimesh on export
-        # This is because: for the max_angle function, it must only iterate over the world object, and not the obstacles
-        # All collisions height will have to update after the model is udpated
-        
+               
         mesh = self.model.get_mesh()
         if mesh is None:
             return print("Erorr: mesh does not exist")
 
         # mesh mush be exported first so the path exists
-        mesh.export(f"{model_path}/{model_name}")
+        mesh.export(f"{model_path}/model.obj")
         # create a link to the exported mesh
-        uri = f"model://{model_folder}/{model_name}"
+        uri = f"model://{model_folder}/model.obj"
         sdf_elements = create_model_sdf_elements(uri)
         model_sdf = create_sdf_tree(sdf_elements)
         if model_sdf:
@@ -151,9 +151,12 @@ class TerrainGeneratorController:
         model.children["version"] = version
         model.children["auhtor"] = author
         model.export_xml(f"{model_path}/model.config")
-        include = Include()
-        include.uri = f"model://{model_folder}"
+        # include = Include()
+        # include.uri = f"model://{model_folder}"
         world = self.model.get_world()
+        # world.add_include(include)
+        include = Include()
+        include.uri = f"model://oak_tree"
         world.add_include(include)
         world.to_sdf()
 
