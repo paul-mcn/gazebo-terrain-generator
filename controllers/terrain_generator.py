@@ -2,9 +2,11 @@ from pathlib import Path
 import shutil
 from pcg_gazebo.parsers.sdf import create_sdf_element
 from models.terrain_generator import TerrainGeneratorModel
-from util.sdf_creator import create_rock_sdf, create_tree_sdf
+from util.sdf_creator import create_grass_sdf, create_rock_sdf, create_tree_sdf
 import numpy as np
 import yaml
+from util.app_config import settings
+from trimesh import Trimesh
 
 
 def emit_value_change(func):
@@ -27,7 +29,10 @@ class TerrainGeneratorController:
         self.view = None
         self.callback = None
         self.on_value_change = None
-        self.load_generator_settings()
+        self.load_generator_settings("Default.yml")
+        # make sure these dirs exist
+        model_path = Path(Path.cwd(), "assets", "setting-presets")
+        model_path.mkdir(exist_ok=True)
 
     @emit_value_change
     def set_width(self, value):
@@ -56,6 +61,10 @@ class TerrainGeneratorController:
     @emit_value_change
     def set_total_obstacles(self, value):
         self.model.set_total_obstacles(value)
+
+    @emit_value_change
+    def set_total_grass(self, value):
+        self.model.set_total_grass(value)
 
     @emit_value_change
     def set_resolution(self, value):
@@ -106,6 +115,9 @@ class TerrainGeneratorController:
     def get_total_obstacles(self):
         return self.model.get_total_obstacles()
 
+    def get_total_grass(self):
+        return self.model.get_total_grass()
+
     def get_tree_density(self):
         return self.model.get_tree_density()
 
@@ -115,25 +127,29 @@ class TerrainGeneratorController:
     def get_procedural_array(self):
         return self.model.get_procedural_array()
 
-    def load_generator_settings(self):
-        with open("./assets/generator_settings.yml", "r") as stream:
-            try:
-                settings = yaml.safe_load(stream)
-                self.set_height(settings["height"])
-                self.set_width(settings["width"])
-                self.set_resolution(settings["resolution"])
-                self.set_scale(settings["scale"])
-                self.set_octaves(settings["octaves"])
-                self.set_persistence(settings["persistence"])
-                self.set_max_angle(settings["max_angle"])
-                self.set_tree_density(settings["tree_density"])
-                self.set_rock_density(settings["rock_density"])
-                self.set_total_obstacles(settings["total_obstacles"])
-            except yaml.YAMLError as exc:
-                print("Error: Could not load yml file")
-                print(exc)
+    def load_generator_settings(self, filename):
+        try:
+            with open(f"./assets/setting-presets/{filename}", "r") as stream:
+                try:
+                    settings = yaml.safe_load(stream)
+                    self.set_height(settings["height"])
+                    self.set_width(settings["width"])
+                    self.set_resolution(settings["resolution"])
+                    self.set_scale(settings["scale"])
+                    self.set_octaves(settings["octaves"])
+                    self.set_persistence(settings["persistence"])
+                    self.set_max_angle(settings["max_angle"])
+                    self.set_tree_density(settings["tree_density"])
+                    self.set_rock_density(settings["rock_density"])
+                    self.set_total_obstacles(settings["total_obstacles"])
+                except yaml.YAMLError as exc:
+                    print("Error: Could not load yml file")
+                    print(exc)
 
-    def save_generator_settings(self):
+        except FileNotFoundError:
+            self.save_generator_settings("Default")
+
+    def save_generator_settings(self, filename):
         data = {
             "height": self.get_height(),
             "width": self.get_width(),
@@ -146,19 +162,19 @@ class TerrainGeneratorController:
             "rock_density": self.get_rock_density(),
             "total_obstacles": self.get_total_obstacles(),
         }
-        with open("./assets/generator_settings.yml", "w") as f:
+        filepath = f"./assets/setting-presets/{filename}.yml"
+        with open(filepath, "w") as f:
             yaml.dump(data, f, default_flow_style=False)
-            print("Saved settings in ./assets/generator_settings.yml")
+            print(f"Saved settings in {filepath}")
 
     def export_collision_objects(self):
         """
-        Collision objects are contained within the repo. They are copied from here to the ~/.gazebo/models location
+        Collision objects are contained within the repo. They are copied from ./assets/meshes to ~/.gazebo/models
         """
         assets_dir = Path(Path.cwd(), "assets", "meshes")
         model_dir = Path(Path.home(), ".gazebo", "models")
-
         shutil.copytree(assets_dir, model_dir, dirs_exist_ok=True)
-
+        
     def export_world(self, model_folder="ground_mesh1"):
         model_path = Path(Path.home(), ".gazebo", "models", model_folder)
         model_path.mkdir(exist_ok=True)
@@ -184,15 +200,12 @@ class TerrainGeneratorController:
         world = create_sdf_element("world")
         physics = create_sdf_element("physics")
         physics.reset(mode="ode", with_optional_elements=True)
-        # world.children["physics"] = physics
         world.children["model"] = [ground_mesh]
-        for i, obstacle in enumerate(obstacles):
-            x, y, z = obstacle.metadata["displacement"]
-            print(f"x={x} | y={y} | z={z}")
-            # TODO: use actual generated numbers from before, this works fine for now.
-            roll, pitch, yaw = np.random.rand(3)
+        for i, grass_mesh in enumerate(obstacles):
+            x, y, z = grass_mesh.metadata["displacement"]
             model = None
-            if obstacle.metadata["name"] == "rock":
+            if grass_mesh.metadata["name"] == "rock":
+                roll, pitch, yaw = np.random.rand(3)
                 model = create_rock_sdf(
                     "model://rock/meshes/Rock1.dae",
                     [
@@ -202,9 +215,11 @@ class TerrainGeneratorController:
                     f"Rock_{i}",
                     [x, y, z, roll, pitch, yaw],
                     "Rock",
-                    [0.4, 0.4, 0.4],
+                    [0.2, 0.2, 0.2],
                 )
             else:
+                # only used for "yaw" so trees rotate on up axis
+                model_pose = [x, y, z, 0, 0, np.random.random_sample()]
                 model = create_tree_sdf(
                     "model://oak_tree/meshes/oak_tree.dae",
                     [
@@ -212,10 +227,22 @@ class TerrainGeneratorController:
                         "model://oak_tree/materials/textures/",
                     ],
                     f"Tree_{i}",
-                    [x, y, z, roll, pitch, yaw],
+                    model_pose,
                     ["OakTree/Branch", "OakTree/Bark"],
                     [0.4, 0.4, 0.4],
                 )
+            world.children["model"].append(model)
+        grass = self.model.get_grass()
+        for i, grass_mesh in enumerate(grass):
+            x, y, z = grass_mesh.metadata["displacement"]
+            model_pose = [x, y, z, np.random.random_sample(), 1, 0]
+            model = create_grass_sdf(
+                "model://grass_blade/meshes/model.dae",
+                f"Grass_{i}",
+                model_pose,
+                "Gazebo/Grass",
+                [0.1, 0.1, 0.1],
+            )
             world.children["model"].append(model)
         sdf = create_sdf_element("sdf")
         sdf.children["world"] = world

@@ -18,6 +18,9 @@ class AppConfig:
         self.viewport_width = int(self.app_width - self.sidebar_width)
         self.viewport_height = int(self.app_height)
         self.viewport_bg_color = "#5c5c5c"
+        
+        # yml config
+        self.default_yml_config = "Default.yml"
 
     def get_app_width(self):
         return self.app_width
@@ -39,6 +42,9 @@ class AppConfig:
 
     def get_viewport_bg_color(self):
         return self.viewport_bg_color
+
+    def get_default_setting_name(self):
+        return self.default_yml_config
 
 
 settings = AppConfig()

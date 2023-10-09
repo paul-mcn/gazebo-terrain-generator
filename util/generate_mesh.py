@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 from PIL import Image
-from trimesh import Trimesh, proximity, transformations, visual, smoothing, ray
+from trimesh import Trimesh, proximity, transformations, visual, smoothing, creation
 from trimesh.exchange import load
 import copy
 
@@ -54,6 +54,7 @@ def max_angle(points):
         if angle_deg > max_angle:
             max_angle = angle_deg
 
+
 def create_vertices(noise_map, resolution=50, width=10, height=10):
     """
     create verticies using a noise map
@@ -103,9 +104,7 @@ def create_faces(resolution=50):
     return faces
 
 
-def create_ground_mesh(
-    noise_map, resolution=50, width=10, height=10
-):
+def create_ground_mesh(noise_map, resolution=50, width=10, height=10):
     """
     Create a trimesh from the vertices and faces
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
@@ -229,18 +228,25 @@ def create_tree_obstacles(count, x_displacement, y_displacement, ground_mesh):
     )
 
 
+def create_grass(count, x_displacement, y_displacement, ground_mesh):
+    grass_mesh_path = Path(Path.cwd(), "assets/meshes/grass_blade/meshes/model.dae")
+    grass_mesh = load.load(grass_mesh_path, force="mesh")
+    rotation_axis = [[1, -0.5, 1], [1, 1, 1]]
+    return create_displaced_meshes(
+        grass_mesh,
+        count,
+        x_displacement,
+        y_displacement,
+        [0.05, 0.07],
+        rotation_axis,
+        rotation_angle_range=[np.pi, np.pi * 2],
+        ground_mesh=ground_mesh,
+    )
+
+
 def create_obstacles(
     rock_count, tree_count, x_displacement, y_displacement, ground_mesh
 ):
-    # box_meshes = []
-    # for _ in range(count):
-    #     bias = np.array([height, width, 0.2])  # bias in x y or z direction
-    #     translation = np.random.rand(3) * bias - bias / 2  # Generate random translation
-    #     transform = transformations.translation_matrix(translation)
-    #     c = creation.cylinder(radius=0.1, height=np.random.rand(1), transform=transform)
-    #     box_meshes.append(c)
-    #
-    # return box_meshes
     rocks = create_rock_obstacles(
         rock_count, x_displacement, y_displacement, ground_mesh
     )

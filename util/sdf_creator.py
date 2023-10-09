@@ -87,6 +87,31 @@ def create_rock_sdf(
     return model
 
 
+def create_grass_sdf(mesh_uri, model_name, model_pose, material_name, scale):
+    uri = create_sdf_element("uri")
+    script = create_sdf_element("script")
+    material = create_sdf_element("material")
+    visual = create_sdf_element("visual")
+    link = create_sdf_element("link")
+    model = create_sdf_element("model")
+    geometry = create_geometry_sdf(mesh_uri, scale)
+    material.reset(with_optional_elements=True)  # type: ignore
+    script.name = material_name  # type: ignore
+    # for objects that dont have custom materials, just use the gazebo default materials
+    uri.value = "file://media/materials/scripts/gazebo.material"
+    script.children["uri"] = uri # type: ignore
+    material.children["script"] = script  # type: ignore
+    visual.children["geometry"] = geometry  # type: ignore
+    visual.children["material"] = material  # type: ignore
+    visual.name = "grass"  # type: ignore
+    link.children["visual"] = visual  # type: ignore
+    model.children["link"] = link  # type: ignore
+    model.name = model_name  # type: ignore
+    model.pose = model_pose  # type: ignore
+    model.static = True  # type: ignore
+    return model
+
+
 def create_ground_mesh_sdf_elements(mesh_uri, color=[0, 0.5, 0, 1]):
     # list should be in order from child to parent
     sdf_elements = [

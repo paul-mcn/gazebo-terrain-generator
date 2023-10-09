@@ -1,0 +1,10 @@
+height: 200
+max_angle: 45
+octaves: 2
+persistence: 0.4
+resolution: 139
+rock_density: 1.0
+scale: 16
+total_obstacles: 1
+tree_density: 1.0
+width: 200

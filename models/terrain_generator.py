@@ -2,7 +2,7 @@
 # import os
 from pcg_gazebo.simulation import World
 from util.noise_generators import perlin_noise
-from util.array_to_mesh import create_ground_mesh, create_obstacles
+from util.generate_mesh import create_grass, create_ground_mesh, create_obstacles
 import numpy as np
 from trimesh import scene
 
@@ -26,6 +26,8 @@ class TerrainGeneratorModel:
         self._total_obstacles = 1
         self._mesh_rgba = np.array([0, 128, 0, 1])  # the color the mesh will be
         self._obstacle_items = []
+        self._total_grass = 100
+        self._grass_items = []
 
         # Numpy procedural array
         self._procedural_array = None
@@ -68,6 +70,9 @@ class TerrainGeneratorModel:
 
     def set_total_obstacles(self, value):
         self._total_obstacles = int(value)
+
+    def set_total_grass(self, value):
+        self._total_grass = int(value)
 
     def update_mesh(self):
         self.generate_procedural_array()
@@ -112,6 +117,12 @@ class TerrainGeneratorModel:
     def get_obstacles(self):
         return self._obstacle_items
 
+    def get_total_grass(self):
+        return self._total_grass
+
+    def get_grass(self):
+        return self._grass_items
+
     def get_mesh_color(self, normalise=False):
         if normalise:
             # just normalise the red, green and blue channels, not the alpha
@@ -128,6 +139,8 @@ class TerrainGeneratorModel:
         if self._mesh:
             world = scene.scene.Scene(self._mesh)
             for geo in self._obstacle_items:
+                world.add_geometry(geo)
+            for geo in self._grass_items:
                 world.add_geometry(geo)
             world.show()
 
@@ -169,10 +182,14 @@ class TerrainGeneratorModel:
         self._mesh = mesh
         if self._total_obstacles > 0:
             rock_count, tree_count = self.get_obstacle_count()
+            # center displacement
             x_displacement = [-self._width // 2, self._width // 2]
             y_displacement = [-self._height // 2, self._height // 2]
             self._obstacle_items = create_obstacles(
                 rock_count, tree_count, x_displacement, y_displacement, mesh
+            )
+            self._grass_items = create_grass(
+                self._total_grass, x_displacement, y_displacement, mesh
             )
 
     # TODO: implement custom paths

@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="grass_blade">
+    <static>true</static>
+    <link name="link">
+      <visual name="grass_blade">
+        <geometry>
+          <mesh>
+            <uri>model://grass_blade/meshes/model.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://grass_blade/materials/scripts/</uri>
+            <uri>model://grass_blade/materials/textures/</uri>
+						<name>Grass</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
