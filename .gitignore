@@ -1,6 +1,9 @@
 # exported meshes
 /worlds
 
+# settings
+/assets/setting-presets/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
