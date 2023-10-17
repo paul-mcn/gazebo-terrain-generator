@@ -16,7 +16,7 @@ class TerrainGeneratorModel:
         self._width = 10
         self._height = 10
         self._z = 10  # not currently used
-        self._resolution = 50
+        self._resolution = 48
         self._scale = 10
         self._octaves = 2
         self._persistence = 0.8
@@ -178,6 +178,7 @@ class TerrainGeneratorModel:
             resolution=self._resolution,
             width=self._width,
             height=self._height,
+            max_angle=self._max_angle,
         )
         self._mesh = mesh
         if self._total_obstacles > 0:

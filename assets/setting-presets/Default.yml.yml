@@ -1,8 +1,8 @@
 height: 10
-max_angle: 12
+max_angle: 90
 octaves: 5
 persistence: 0.8
-resolution: 50
+resolution: 52
 rock_density: 1.0
 scale: 10
 total_obstacles: 1

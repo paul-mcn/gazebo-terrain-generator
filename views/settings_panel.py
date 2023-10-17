@@ -7,6 +7,8 @@ import glob
 import re
 import os
 
+from util.array_helpers import normalise_array
+
 
 class SettingsPanel(tk.Frame):
     def __init__(self, parent, controller):
@@ -55,12 +57,14 @@ class SettingsPanel(tk.Frame):
         return slider
 
     def procedural_array_to_image(self):
-        image_array = self.controller.get_procedural_array()
+        procedural_array = self.controller.get_procedural_array()
 
-        if image_array is None:
+        if procedural_array is None:
             return ImageTk.PhotoImage(np.array([]))  # type: ignore
-        shifted_array = image_array + np.abs(np.min(image_array))
-        img = Image.fromarray(shifted_array * 100).resize((300, 300))
+        # make array values range from 0 to 255
+        rgb_array = normalise_array(procedural_array) * 255
+        # print(rgb_array.shape)
+        img = Image.fromarray(rgb_array).resize((300, 300))
         return ImageTk.PhotoImage(img)
 
     def noise_frame(self, image_array):
@@ -238,8 +242,9 @@ class SettingsPanel(tk.Frame):
                 "label": "Resolution",
                 "command": self.controller.set_resolution,
                 "getter": self.controller.get_resolution,
-                "min": 2,
+                "min": 4,
                 "max": 200,
+                "resolution": 4,  # Resolution must be a multiple of 4
             },
             {
                 "root": terrain_surface_frame,

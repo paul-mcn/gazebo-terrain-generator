@@ -1,7 +1,7 @@
 import numpy as np
 from pathlib import Path
 from PIL import Image
-from trimesh import Trimesh, proximity, transformations, visual, smoothing, creation
+from trimesh import Trimesh, proximity, transformations, visual, smoothing
 from trimesh.exchange import load
 import copy
 
@@ -25,37 +25,89 @@ def translate_mesh(mesh, translation):
     mesh.vertices = transformations.transform_points(mesh.vertices, matrix)
 
 
-def max_angle(points):
-    "TODO: FIX"
-    # Initialize a variable to store the maximum angle
-    max_angle = 0.0
+def calc_run(x0, x1, y0, y1):
+    return np.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+
+
+def test_angle(points, angle_threshold, resolution):
+    print("test angle------")
+    # Calculate the threshold in radians
+    angle_threshold_radians = np.radians(angle_threshold)
+    # max_height = 0
+
+    max_angle = float(0)
 
     # Iterate through each point
-    num_points = len(points)
-    for i in range(num_points):
-        # Get the current point and its neighbors
-        current_point = points[i]
-        next_point = points[(i + 1) % num_points]  # Wrap around to the first point
+    for i in range(len(points) - 1 - resolution):
+        x0, y0, z0 = points[i]
 
-        # Calculate vectors from the current point to its neighbors
-        vector1 = next_point - current_point
-        vector2 = points[(i + 2) % num_points] - current_point  # Second neighbor
+        # calculate slope between itself and 3 neighbouring points
+        for x, y, z in [
+            points[i + 1],
+            points[i + resolution],
+            points[i + resolution + 1],
+        ]:
+            run = calc_run(x0, x, y0, y)
+            rise = z - z0
 
-        # Calculate the dot product and magnitudes of the vectors
-        dot_product = np.dot(vector1, vector2)
-        magnitude1 = np.linalg.norm(vector1)
-        magnitude2 = np.linalg.norm(vector2)
+            # Calculate the angle of the point in radians
+            point_angle = np.arctan(abs(rise) / abs(run))
 
-        # Calculate the angle between the vectors using the dot product formula
-        angle_rad = np.arccos(dot_product / (magnitude1 * magnitude2))
-        angle_deg = np.degrees(angle_rad)
+            # Check if the point and neighbouring point angle is within the threshold
+            if abs(point_angle) > angle_threshold_radians:
+                angle = np.degrees(point_angle)
+                if angle > max_angle:
+                    max_angle = angle
+                    max_angle_z = abs(run * np.tan(angle_threshold_radians))
+                    print(
+                        f"max_angle_z={np.round(max_angle_z, 4)}"
+                        + f" rise={np.round(abs(rise), 4)}"
+                        + f" max_angle={np.round(angle, 4)}"
+                        + f" is_rise_greater={abs(rise) > max_angle_z}"
+                        + f" x0={np.round(x0, 4)} y0={np.round(y0, 4)} z0={np.round(z0, 4)}"
+                        + f" x={np.round(x, 4)} y={np.round(y, 4)} z={np.round(z, 4)}"
+                        + f" scale_factor={np.round(max_angle_z + abs(z0), 4)} / {np.round(abs(rise) + abs(z0), 4)}"
+                    )
 
-        # Update the maximum angle if needed
-        if angle_deg > max_angle:
-            max_angle = angle_deg
+    print("max angle:")
+    print(max_angle)
 
 
-def create_vertices(noise_map, resolution=50, width=10, height=10):
+def clamp_angle(points, angle_threshold, resolution):
+    # Calculate the threshold in radians
+    angle_threshold_radians = np.radians(angle_threshold)
+
+    max_angle = float(0)
+    scale_factor = 1
+
+    # Iterate through each point
+    for i in range(len(points) - 1 - resolution):
+        x0, y0, z0 = points[i]
+
+        # calculate slope between itself and 3 neighbouring points
+        for x, y, z in [
+            points[i + 1],
+            points[i + resolution],
+            points[i + resolution + 1],
+        ]:
+            run = calc_run(x0, x, y0, y)
+            rise = z - z0
+
+            # Calculate the angle of the point in radians
+            point_angle = np.arctan(abs(rise) / abs(run))
+
+            # Check if the point and neighbouring point angle is within the threshold
+            if abs(point_angle) > angle_threshold_radians:
+                angle = np.degrees(point_angle)
+                if angle > max_angle:
+                    max_angle = angle
+                    max_angle_z = abs(run * np.tan(angle_threshold_radians))
+                    scale_factor = max_angle_z / abs(rise)
+
+    return points * [1, 1, scale_factor]
+
+
+def create_vertices(noise_map, resolution=48, width=10, height=10):
     """
     create verticies using a noise map
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
@@ -70,13 +122,11 @@ def create_vertices(noise_map, resolution=50, width=10, height=10):
     y = np.linspace(-height / 2, height / 2, resolution)
     X, Y = np.meshgrid(x, y)
     Z = noise_map.flatten()  # Use the Perlin noise map to displace the vertices
-    # max_angle(Z)
     vertices = np.vstack((X.flatten(), Y.flatten(), Z)).T
-    # max_angle(vertices)
     return vertices
 
 
-def create_faces(resolution=50):
+def create_faces(resolution=48):
     """
     Creates faces
     `resolution` -- the resolution needed for the mesh
@@ -104,7 +154,7 @@ def create_faces(resolution=50):
     return faces
 
 
-def create_ground_mesh(noise_map, resolution=50, width=10, height=10):
+def create_ground_mesh(noise_map, resolution=48, width=10, height=10, max_angle=90):
     """
     Create a trimesh from the vertices and faces
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
@@ -114,8 +164,9 @@ def create_ground_mesh(noise_map, resolution=50, width=10, height=10):
     `obstacle_count` -- count of obstacles on resulting mesh (default=0)
     """
     vertices = create_vertices(noise_map, resolution, width, height)
+    clamped_vertices = clamp_angle(vertices, max_angle, resolution)
     faces = create_faces(resolution)
-    terrain_mesh = Trimesh(vertices=vertices, faces=faces)
+    terrain_mesh = Trimesh(vertices=clamped_vertices, faces=faces)
     smoothing.filter_humphrey(terrain_mesh)
 
     return terrain_mesh
@@ -176,12 +227,12 @@ def create_rock_obstacles(count, x_displacement, y_displacement, ground_mesh):
 
     mesh_path = Path(Path.cwd(), "assets/meshes/rock/meshes/Rock1.dae")
     rock_mesh = load.load(mesh_path, force="mesh")
-    rock_mesh.metadata["name"] = "rock"
+    rock_mesh.metadata["name"] = "rock"  # type: ignore
     texture_path = Path(
         Path.cwd(), "assets/meshes/rock/materials/textures/rock-diffuse.png"
     )
     material = visual.material.SimpleMaterial(image=Image.open(texture_path))
-    rock_mesh.visual.material = material
+    rock_mesh.visual.material = material  # type: ignore
     rotation_angle = [0, np.pi * 2]
     rotation_axis = [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]]
     rocks = create_displaced_meshes(
