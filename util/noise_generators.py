@@ -1,52 +1,50 @@
 import numpy as np
-from noise import pnoise2
 import pyfastnoisesimd as fns
 
 
-def perlin_noise(resolution=48, scale=10, octaves=2, persistence=0.8):
-    # return perlin_noise_old(resolution, scale, octaves, persistence)
-    return perlin_noise_new(resolution, scale, octaves, persistence)
+def custom_noise(
+    resolution=48,
+    noise_type="Perlin",
+    fractal_octaves=2,
+    fractal_gain=0.5,
+    fractal_lacunarity=2,
+    frequency=0.1,
+    fractal_type="FBM",
+    perturb_type="NoPerturb",
+    perturb_amp=1,
+    perturb_frequency=0.5,
+    perturb_gain=0.5,
+    perturb_octaves=3,
+    perturb_lacunarity=2.0,
+    perturb_normalise_length=1.0,
+    cellular_return_type="Distance",
+    cellular_distance_function="Euclidean",
+    cellular_jitter=0.45,
+    cellular_lookup_frequency=0.2,
+):
+    noise = fns.Noise(0)
+    noise.frequency = frequency
+    noise.noiseType = fns.NoiseType[noise_type]
+    noise.fractal.fractalType = fns.FractalType[fractal_type]
+    noise.fractal.octaves = fractal_octaves
+    noise.fractal.gain = fractal_gain
+    noise.fractal.lacunarity = fractal_lacunarity
+    if perturb_type != "NoPerturb":
+        noise.perturb.perturbType = fns.PerturbType[perturb_type]
+        noise.perturb.octaves = perturb_octaves
+        noise.perturb.lacunarity = perturb_lacunarity
+        noise.perturb.normaliseLength = perturb_normalise_length
+        noise.perturb.frequency = perturb_frequency
+        noise.perturb.gain = perturb_gain
+        noise.perturb.amp = perturb_amp
+    if cellular_return_type != "Distance":
+        noise.cell.jitter = cellular_jitter
+        noise.cell.distanceFunc = fns.CellularDistanceFunction[
+            cellular_distance_function
+        ]
+        noise.cell.returnType = fns.CellularReturnType[cellular_return_type]
+        noise.cell.lookupFrequency = cellular_lookup_frequency
+        noise.cell.noiseLookupType = fns.NoiseType[noise_type]
 
-
-def perlin_noise_old(resolution=48, scale=10, octaves=2, persistence=0.8):
-    """
-    Creates a Perlin noise numpy array
-    `resolution` -- resolution of mesh (default=50)
-    `scale` -- Controls the frequency of the noise (default=10)
-    `octaves` -- Controls the level of detail in the noise (default=2)
-    `persistence` -- Controls the roughness of the noise, should be between 0 and 1 (default=0.8)
-
-    returns -- (vertices, faces)
-    """
-    # Generate the Perlin noise map
-    noise_map = np.zeros((resolution, resolution))
-    for i in range(resolution):
-        for j in range(resolution):
-            noise_map[i][j] = pnoise2(
-                i / scale, j / scale, octaves=octaves, persistence=persistence
-            )
-
-    return noise_map
-
-
-def perlin_noise_new(resolution=48, scale=10, octaves=2, frequency=0.1):
-    """
-    Creates a Perlin noise numpy array
-    `resolution` -- resolution of mesh (default=50)
-    `scale` -- Controls the frequency of the noise (default=10)
-    `octaves` -- Controls the level of detail in the noise (default=2)
-    `persistence` -- Controls the roughness of the noise, should be between 0 and 1 (default=0.8)
-
-    returns -- (vertices, faces)
-    """
-
-    perlin = fns.Noise(0)
-    perlin.frequency = frequency
-    perlin.noiseType = fns.NoiseType.Perlin
-    perlin.fractal.octaves = octaves
-    perlin.fractal.lacunarity = 2.1
-    # perlin.
-    # perlin.fractal.gain = 0.45
-    # perlin.perturb.perturbType = fns.PerturbType.NoPerturb
-    array = perlin.genAsGrid([resolution, resolution, resolution])
+    array = noise.genAsGrid([resolution, resolution, resolution])
     return array[:, :, 1]

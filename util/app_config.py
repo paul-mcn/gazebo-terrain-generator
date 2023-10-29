@@ -18,6 +18,11 @@ class AppConfig:
         self.viewport_width = int(self.app_width - self.sidebar_width)
         self.viewport_height = int(self.app_height)
         self.viewport_bg_color = "#5c5c5c"
+
+        # color settings
+        self.background = "#d9d9d9"
+        self.text_enabled = "black"
+        self.text_disabed = "#969696"
         
         # yml config
         self.default_yml_config = "Default.yml"
@@ -45,6 +50,15 @@ class AppConfig:
 
     def get_default_setting_name(self):
         return self.default_yml_config
+
+    def get_background(self):
+        return self.background
+
+    def get_enabled_text_color(self):
+        return self.text_enabled
+
+    def get_disabled_text_color(self):
+        return self.text_disabed
 
 
 settings = AppConfig()

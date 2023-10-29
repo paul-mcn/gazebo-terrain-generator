@@ -1,8 +1,24 @@
 height: 10
 max_angle: 90
-octaves: 5
-persistence: 0.8
-resolution: 52
+noise_options:
+  cellular_distance_function: Euclidean
+  cellular_jitter: '0.45'
+  cellular_lookup_frequency: '0.20'
+  cellular_return_type: Distance
+  fractal_gain: '0.50'
+  fractal_lacunarity: '2'
+  fractal_octaves: '2'
+  fractal_type: FBM
+  frequency: '0.10'
+  perturb_amp: 1
+  perturb_frequency: '0.50'
+  perturb_gain: '0.50'
+  perturb_lacunarity: '2.00'
+  perturb_normalise_length: '1.00'
+  perturb_octaves: '3'
+  perturb_type: NoPerturb
+noise_type: Perlin
+resolution: 48
 rock_density: 1.0
 scale: 10
 total_obstacles: 1

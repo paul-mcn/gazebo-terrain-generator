@@ -167,6 +167,8 @@ def create_ground_mesh(noise_map, resolution=48, width=10, height=10, max_angle=
     clamped_vertices = clamp_angle(vertices, max_angle, resolution)
     faces = create_faces(resolution)
     terrain_mesh = Trimesh(vertices=clamped_vertices, faces=faces)
+    # UVs need to be unwrapped so that the Gazebo/Grass texture works
+    terrain_mesh = terrain_mesh.unwrap()
     smoothing.filter_humphrey(terrain_mesh)
 
     return terrain_mesh

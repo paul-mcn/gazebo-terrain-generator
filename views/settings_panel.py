@@ -6,8 +6,11 @@ from PIL import Image, ImageTk
 import glob
 import re
 import os
+import collections
 
 from util.array_helpers import normalise_array
+from views.dropdown_menu import Dropdown
+from views.slider_control import SliderControl
 
 
 class SettingsPanel(tk.Frame):
@@ -20,12 +23,12 @@ class SettingsPanel(tk.Frame):
         self.config(
             height=settings.get_sidebar_height(), width=settings.get_sidebar_width()
         )
-        self.slider_frame = tk.Frame(self)
-        self.slider_frame.pack(fill="y", side="left")
-
-        self.dropdown = self.create_dropdown(
-            self.slider_frame, command=self.on_change_dropdown
-        )
+        self.left_sidebar_frame = tk.Frame(self)
+        self.main_frame = tk.Frame(self)
+        self.right_sidebar_frame = tk.Frame(self)
+        self.left_sidebar_frame.pack(fill="both", side="left")
+        self.main_frame.pack(fill="both", side="left", expand=True)
+        self.right_sidebar_frame.pack(fill="both", side="left")
         self.inputs = self.create_inputs()
         image_array = self.procedural_array_to_image()
         self.image_label = self.noise_frame(image_array)
@@ -33,28 +36,8 @@ class SettingsPanel(tk.Frame):
         # update procedurally generated image when values change
         self.controller.set_on_value_change(self.on_value_change)
         self.create_buttons()
-
-    def slider_control(self, frame, label_text, command, min, max, **args):
-        """Create a slider with a label"""
-        # Create a container to hold the label and slider
-        container_frame = tk.Frame(frame)
-        container_frame.pack(pady=5, padx=10)
-
-        # create label
-        label = tk.Label(container_frame, text=label_text)
-        label.pack(padx=(10, 20), side="left")
-
-        # create horizontal slider
-        slider = tk.Scale(
-            container_frame,
-            from_=min,
-            to=max,
-            orient=tk.HORIZONTAL,
-            command=command,
-            **args,
-        )
-        slider.pack(fill="x")
-        return slider
+        self.on_noise_type_change(self.controller.get_noise_type())
+        self.on_peturb_type_change(self.controller.get_noise_option("perturb_type"))
 
     def procedural_array_to_image(self):
         procedural_array = self.controller.get_procedural_array()
@@ -63,7 +46,6 @@ class SettingsPanel(tk.Frame):
             return ImageTk.PhotoImage(np.array([]))  # type: ignore
         # make array values range from 0 to 255
         rgb_array = normalise_array(procedural_array) * 255
-        # print(rgb_array.shape)
         img = Image.fromarray(rgb_array).resize((300, 300))
         return ImageTk.PhotoImage(img)
 
@@ -73,7 +55,9 @@ class SettingsPanel(tk.Frame):
         self.photo_image = image_array
 
         # create a label widget with the PhotoImage
-        image_label = tk.Label(self, image=self.photo_image, width=300, height=300)
+        image_label = tk.Label(
+            self.main_frame, image=self.photo_image, width=300, height=300
+        )
         image_label.pack(padx=20, pady=20)
         return image_label
 
@@ -120,7 +104,7 @@ class SettingsPanel(tk.Frame):
             input.delete(0, tk.END)
             input.insert(0, cleaned_value)
 
-            command(f"{cleaned_value}.yml")
+            command(cleaned_value)
             modal.destroy()
 
         btn = tk.Button(modal, text="Okay", command=on_click)
@@ -134,46 +118,18 @@ class SettingsPanel(tk.Frame):
 
         return preset_values
 
-    def update_dropdown(self, selected_value):
-        # Get new options from ./assets/setting-presets/*.yml
-        new_options = self.get_setting_presets()
-
-        # Clear the existing menu
-        self.dropdown["menu"].delete(0, "end")
-
-        # Add the new options to the menu
-        for option in new_options:
-            self.dropdown["menu"].add_command(
-                label=option, command=tk._setit(self.dropdown_selected, option)
-            )
-
-        self.dropdown_selected.set(selected_value)
-
-    def create_dropdown(self, root, command):
-        preset_values = self.get_setting_presets()
-
-        dropdown_selected_val = tk.StringVar(root, "Default.yml")
-        option_menu = tk.OptionMenu(
-            root,
-            dropdown_selected_val,
-            *preset_values,
-        )
-        dropdown_selected_val.trace_add(
-            "write", callback=lambda *_: command(dropdown_selected_val.get())
-        )
-        option_menu.pack(fill="x")
-        self.dropdown_selected = dropdown_selected_val
-        return option_menu
-
     def on_click_save_settings(self):
         def on_submit(filename):
             self.controller.save_generator_settings(filename)
-            self.update_dropdown(filename)
+            dropdown = self.get_inputs_by_ids("dropdown-presets")["widget"]  # type: ignore
+            new_options = self.get_setting_presets()
+            dropdown.update_options(new_options)
+            dropdown.set(filename)
 
         self.create_modal(on_submit)
 
     def create_buttons(self):
-        button_frame = tk.Frame(self)
+        button_frame = tk.Frame(self.main_frame)
         button_frame.pack()
         # add export functionality
         export_btn = tk.Button(
@@ -195,13 +151,123 @@ class SettingsPanel(tk.Frame):
 
         return [export_btn, preview_btn, save_btn]
 
+    def get_inputs_by_ids(self, ids):
+        """
+        Get an input using a `str` or multiple using an array of `str`.
+
+        :param ids str or str[]: string or array of strings
+        """
+        if isinstance(ids, str):
+            for input in self.inputs:
+                if input.get("id") == ids:
+                    return input
+        inputs = []
+        for input in self.inputs:
+            if input.get("id") in ids:
+                inputs.append(input)
+        return inputs
+
     def update_input_values(self):
         for input in self.inputs:
-            input["widget"].set(input["getter"]())
+            if input.get("getter"):
+                input.get("widget").set(input["getter"]())
+            # else:
+            # if there is not setter than its probably a dropdown menu with a commmand instead
+            # input.get("widget").command()
 
     def on_change_dropdown(self, value):
         self.controller.load_generator_settings(value)
         self.update_input_values()
+
+    def on_noise_type_change(self, noise_type):
+        self.controller.set_noise_type(noise_type)
+        noise_pattern = "fractal"
+        self.disable_inputs_by_option(
+            noise_pattern, re.search(noise_pattern, noise_type, re.IGNORECASE)
+        )
+
+    def on_peturb_type_change(self, perturb_type):
+        self.controller.set_noise_options(("perturb_type", perturb_type))
+        noise_pattern = "perturb"
+        self.disable_inputs_by_option(
+            noise_pattern, not re.search(noise_pattern, perturb_type, re.IGNORECASE)
+        )
+
+    def on_cell_return_type_change(self, cell_return_type):
+        self.controller.set_noise_options(("cellular_return_type", cell_return_type))
+        # noise_pattern = "cellular"
+        # self.disable_inputs_by_option(
+        #     noise_pattern, cell_return_type == "Distance"
+        # )  # "Distance" is the default setting
+
+    def disable_inputs_by_option(self, noise_pattern, should_enable):
+        noise_options = self.controller.get_noise_options()
+        fractal_input_ids = []
+        # find all the inputs related to the "noise_pattern"
+        # e.g. noise_pattern = "fractal" => get all the fractal related inputs
+        for option in noise_options.keys():
+            # if option is fractal and selected dropdown item is fractal
+            if re.search(noise_pattern, option, re.IGNORECASE):
+                fractal_input_ids.append(option)
+
+        # toggle the text color of inputs based on the dropdown menu's selected item
+        for option in self.get_inputs_by_ids(fractal_input_ids) or []:
+            option.get("widget").set_enabled(should_enable)
+
+    def create_noise_inputs(self, frame):
+        noise_options = self.controller.get_noise_options()
+        inputs = []
+        for option in noise_options.keys():
+            getter = lambda option=option: self.controller.get_noise_option(option)
+            command = lambda value, option=option: self.controller.set_noise_options(
+                (option, value)
+            )
+            if isinstance(noise_options[option], (int, float)):
+                input = collections.defaultdict(dict)
+                input = {
+                    "id": option,
+                    "getter": getter,
+                    "input_creator": SliderControl,
+                    "input_args": {
+                        "command": command,
+                        "parent": frame,
+                        "label_text": option.replace("_", " ").capitalize(),
+                    },
+                }
+                if type(noise_options[option]) == int:
+                    input["input_args"]["from_"] = 1
+                    input["input_args"]["to"] = 10
+                elif type(noise_options[option]) == float:
+                    input["input_args"]["from_"] = 0.01
+                    input["input_args"]["resolution"] = 0.01
+                    input["input_args"]["to"] = 5
+                inputs.append(input)
+
+            elif type(noise_options[option]) == str:
+                noise_option = self.controller.get_noise_option(option)
+                dropdown_values = self.controller.get_noise_dropdown_options(option)
+                input_commands = {
+                    "noise_type": lambda value: self.on_noise_type_change(value),
+                    "perturb_type": lambda value: self.on_peturb_type_change(value),
+                    "cellular_return_type": lambda value: self.on_cell_return_type_change(
+                        value
+                    ),
+                }
+
+                input = {
+                    # "id": noise_option,
+                    "getter": getter,
+                    "input_creator": Dropdown,
+                    "input_args": {
+                        "command": input_commands.get(option) or command,
+                        "parent": frame,
+                        "default": noise_option,
+                        "values": dropdown_values,
+                    },
+                }
+                inputs.append(input)
+
+        return inputs
 
     def create_inputs(self):
         """
@@ -212,121 +278,159 @@ class SettingsPanel(tk.Frame):
         @returns inputs
         """
 
-        terrain_surface_frame = tk.LabelFrame(self.slider_frame, text="Terrain Surface")
-        obstacles_frame = tk.LabelFrame(self.slider_frame, text="Obstacles")
-        misc_frame = tk.LabelFrame(self.slider_frame, text="Misc")
+        generator_settings_frame = tk.LabelFrame(
+            self.left_sidebar_frame, text="Generator Settings"
+        )
+        terrain_surface_frame = tk.LabelFrame(
+            self.left_sidebar_frame, text="Terrain Surface"
+        )
+        noise_frame = tk.LabelFrame(self.left_sidebar_frame, text="Noise")
+        noise_dropdown_frame = tk.Frame(noise_frame)
+        noise_input_frame = tk.Frame(noise_frame)
+        obstacles_frame = tk.LabelFrame(self.right_sidebar_frame, text="Obstacles")
+        misc_frame = tk.LabelFrame(self.right_sidebar_frame, text="Misc")
 
+        generator_settings_frame.pack(fill="x")
         terrain_surface_frame.pack(fill="x")
+        noise_frame.pack(fill="x")
+        noise_dropdown_frame.pack(fill="x")
+        noise_input_frame.pack(fill="x")
         obstacles_frame.pack(fill="x")
         misc_frame.pack(fill="x")
 
         input_params = [
             {
-                "root": terrain_surface_frame,  # the parent frame
-                "label": "Width",
-                "command": self.controller.set_width,  # the handler for the input
+                "id": "dropdown-presets",
+                "input_creator": Dropdown,
+                "input_args": {
+                    "command": self.on_change_dropdown,
+                    "parent": generator_settings_frame,
+                    "default": "Default.yml",
+                    "values": self.get_setting_presets(),
+                },
+            },
+            {
                 "getter": self.controller.get_width,  # the value from the input
-                "min": 1,
-                "max": 200,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_width,  # the handler for the input
+                    "parent": terrain_surface_frame,  # the parent frame
+                    "label_text": "Width",
+                    "from_": 1,
+                    "to": 200,
+                },
             },
             {
-                "root": terrain_surface_frame,
-                "label": "Height",
-                "command": self.controller.set_height,
                 "getter": self.controller.get_height,
-                "min": 1,
-                "max": 200,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_height,
+                    "parent": terrain_surface_frame,
+                    "label_text": "Height",
+                    "from_": 1,
+                    "to": 200,
+                },
             },
             {
-                "root": terrain_surface_frame,
-                "label": "Resolution",
-                "command": self.controller.set_resolution,
                 "getter": self.controller.get_resolution,
-                "min": 4,
-                "max": 200,
-                "resolution": 4,  # Resolution must be a multiple of 4
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_resolution,
+                    "parent": terrain_surface_frame,
+                    "label_text": "Resolution",
+                    "from_": 4,
+                    "to": 200,
+                    "resolution": 4,  # Resolution must be a multiple of 4
+                },
             },
             {
-                "root": terrain_surface_frame,
-                "label": "Scale",
-                "command": self.controller.set_scale,
-                "getter": self.controller.get_scale,
-                "min": 1,
-                "max": 100,
-            },
-            {
-                "root": terrain_surface_frame,
-                "label": "Octaves",
-                "command": self.controller.set_octaves,
-                "getter": self.controller.get_octaves,
-                "min": 1,
-                "max": 25,
-            },
-            {
-                "root": terrain_surface_frame,
-                "label": "Persistence",
-                "command": self.controller.set_persistence,
-                "getter": self.controller.get_persistence,
-                "min": 0,
-                "max": 1,
-                "resolution": 0.1,
-            },
-            {
-                "root": terrain_surface_frame,
-                "label": "Max angle",
-                "command": self.controller.set_max_angle,
                 "getter": self.controller.get_max_angle,
-                "min": 0,
-                "max": 90,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_max_angle,
+                    "parent": terrain_surface_frame,
+                    "label_text": "Max angle",
+                    "from_": 0,
+                    "to": 90,
+                },
             },
             {
-                "root": obstacles_frame,
-                "label": "Tree density %",
-                "command": self.controller.set_tree_density,
+                "id": "dropdown-noise",
+                "getter": self.controller.get_noise_type,
+                "input_creator": Dropdown,
+                "input_args": {
+                    "command": self.on_noise_type_change,
+                    "parent": noise_dropdown_frame,
+                    "default": self.controller.get_noise_type(),
+                    "values": self.controller.get_noise_types(),
+                },
+            },
+            # {
+            #     "getter": self.controller.get_scale,
+            #     "input_creator": SliderControl,
+            #     "input_args": {
+            #         "command": self.controller.set_scale,
+            #         "parent": noise_frame,
+            #         "label_text": "Scale",
+            #         "from_": 1,
+            #         "to": 100,
+            #     },
+            # },
+            {
                 "getter": self.controller.get_tree_density,
-                "min": 0,
-                "max": 100,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_tree_density,
+                    "parent": obstacles_frame,
+                    "label_text": "Tree density %",
+                    "from_": 0,
+                    "to": 100,
+                },
             },
             {
-                "root": obstacles_frame,
-                "label": "Rock density %",
-                "command": self.controller.set_rock_density,
                 "getter": self.controller.get_rock_density,
-                "min": 0,
-                "max": 100,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_rock_density,
+                    "parent": obstacles_frame,
+                    "label_text": "Rock density %",
+                    "from_": 0,
+                    "to": 100,
+                },
             },
             {
-                "root": obstacles_frame,
-                "label": "Total",
-                "command": self.controller.set_total_obstacles,
                 "getter": self.controller.get_total_obstacles,
-                "min": 0,
-                "max": 90,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_total_obstacles,
+                    "parent": obstacles_frame,
+                    "label_text": "Total",
+                    "from_": 0,
+                    "to": 90,
+                },
             },
             {
-                "root": misc_frame,
-                "label": "Grass",
-                "command": self.controller.set_total_grass,
                 "getter": self.controller.get_total_grass,
-                "min": 0,
-                "max": 1000,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "parent": misc_frame,
+                    "label_text": "Grass",
+                    "command": self.controller.set_total_grass,
+                    "from_": 0,
+                    "to": 1000,
+                },
             },
         ]
+
+        input_params += self.create_noise_inputs(noise_input_frame)
 
         inputs = []
         for input in input_params:
             # add buttons and sliders to UI
-            widget = self.slider_control(
-                frame=input["root"],
-                label_text=input["label"],
-                command=input["command"],
-                min=input["min"],
-                max=input["max"],
-                resolution=input.get("resolution") or 1,
-            )
-
+            widget = input["input_creator"](**input["input_args"])
             # updates value when the slider is adjusted
-            widget.set(input["getter"]())
+            if input.get("getter"):
+                widget.set(input["getter"]())
             input["widget"] = widget
             inputs.append(input)
 

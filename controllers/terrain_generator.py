@@ -2,11 +2,14 @@ from pathlib import Path
 import shutil
 from pcg_gazebo.parsers.sdf import create_sdf_element
 from models.terrain_generator import TerrainGeneratorModel
-from util.sdf_creator import create_grass_sdf, create_rock_sdf, create_tree_sdf
+from util.sdf_creator import (
+    create_grass_sdf,
+    create_ground_sdf,
+    create_rock_sdf,
+    create_tree_sdf,
+)
 import numpy as np
 import yaml
-from util.app_config import settings
-from trimesh import Trimesh
 
 
 def emit_value_change(func):
@@ -47,6 +50,14 @@ class TerrainGeneratorController:
         self.model.set_z(value)
 
     @emit_value_change
+    def set_noise_type(self, value):
+        self.model.set_noise_type(value)
+
+    @emit_value_change
+    def set_noise_options(self, options):
+        self.model.set_noise_options(options)
+
+    @emit_value_change
     def set_max_angle(self, value):
         self.model.set_max_angle(value)
 
@@ -74,14 +85,6 @@ class TerrainGeneratorController:
     def set_scale(self, value):
         self.model.set_scale(value)
 
-    @emit_value_change
-    def set_octaves(self, value):
-        self.model.set_octaves(value)
-
-    @emit_value_change
-    def set_persistence(self, value):
-        self.model.set_persistence(value)
-
     def set_view(self, view):
         self.view = view
 
@@ -97,17 +100,61 @@ class TerrainGeneratorController:
     def get_z(self):
         return self.model._z
 
+    def get_noise_type(self):
+        return self.model._noise_type
+
+    def get_noise_types(self):
+        return [
+            "Cellular",
+            "Cubic",
+            "CubicFractal",
+            "Perlin",
+            "PerlinFractal",
+            "Simplex",
+            "SimplexFractal",
+            "Value",
+            "ValueFractal",
+            "WhiteNoise",
+        ]
+
+    def get_noise_options(self):
+        return self.model.get_noise_options()
+
+    def get_noise_option(self, key):
+        return self.model.get_noise_option(key)
+
+    def get_noise_dropdown_options(self, key):
+        table = {
+            "cellular_return_type": [
+                "CellValue",
+                "Distance",
+                "Distance2",
+                "Distance2Add",
+                "Distance2Sub",
+                "Distance2Mul",
+                "Distance2Div",
+                "NoiseLookup",
+                "Distance2Cave",
+            ],
+            "cellular_distance_function": ["Euclidean", "Manhattan", "Natural"],
+            "fractal_type": ["FBM", "RigidMulti", "Billow"],
+            "perturb_type": [
+                "Gradient",
+                "GradientFractal",
+                "GradientFractal_Normalise",
+                "Gradient_Normalise",
+                "NoPerturb",
+                "Normalise",
+            ],
+        }
+
+        return table.get(key)
+
     def get_resolution(self):
         return self.model.get_resolution()
 
     def get_scale(self):
         return self.model.get_scale()
-
-    def get_octaves(self):
-        return self.model.get_octaves()
-
-    def get_persistence(self):
-        return self.model.get_persistence()
 
     def get_max_angle(self):
         return self.model.get_max_angle()
@@ -128,17 +175,18 @@ class TerrainGeneratorController:
         return self.model.get_procedural_array()
 
     def load_generator_settings(self, filename):
+        filepath = filename if ".yml" in filename else f"{filename}.yml"
         try:
-            with open(f"./assets/setting-presets/{filename}", "r") as stream:
+            with open(f"./assets/setting-presets/{filepath}", "r") as stream:
                 try:
                     settings = yaml.safe_load(stream)
                     self.set_height(settings["height"])
                     self.set_width(settings["width"])
                     self.set_resolution(settings["resolution"])
                     self.set_scale(settings["scale"])
-                    self.set_octaves(settings["octaves"])
-                    self.set_persistence(settings["persistence"])
                     self.set_max_angle(settings["max_angle"])
+                    self.set_noise_type(settings["noise_type"])
+                    self.set_noise_options(settings["noise_options"])
                     self.set_tree_density(settings["tree_density"])
                     self.set_rock_density(settings["rock_density"])
                     self.set_total_obstacles(settings["total_obstacles"])
@@ -147,6 +195,7 @@ class TerrainGeneratorController:
                     print(exc)
 
         except FileNotFoundError:
+            print("file not found error")
             self.save_generator_settings("Default")
 
     def save_generator_settings(self, filename):
@@ -155,8 +204,8 @@ class TerrainGeneratorController:
             "width": self.get_width(),
             "resolution": self.get_resolution(),
             "scale": self.get_scale(),
-            "octaves": self.get_octaves(),
-            "persistence": self.get_persistence(),
+            "noise_options": self.get_noise_options(),
+            "noise_type": self.get_noise_type(),
             "max_angle": self.get_max_angle(),
             "tree_density": self.get_tree_density(),
             "rock_density": self.get_rock_density(),
@@ -174,7 +223,7 @@ class TerrainGeneratorController:
         assets_dir = Path(Path.cwd(), "assets", "meshes")
         model_dir = Path(Path.home(), ".gazebo", "models")
         shutil.copytree(assets_dir, model_dir, dirs_exist_ok=True)
-        
+
     def export_world(self, model_folder="ground_mesh1"):
         model_path = Path(Path.home(), ".gazebo", "models", model_folder)
         model_path.mkdir(exist_ok=True)
@@ -187,9 +236,8 @@ class TerrainGeneratorController:
         ground_mesh.export(f"{model_path}/model.obj")
         # create a link to the exported mesh
         ground_mesh_uri = f"model://{model_folder}/model.obj"
-        ground_mesh = create_rock_sdf(
+        ground_mesh = create_ground_sdf(
             ground_mesh_uri,
-            False,
             "ground_mesh",
             [0, 0, 0, 0, 0, 0],
             "Gazebo/Grass",
@@ -235,12 +283,12 @@ class TerrainGeneratorController:
         grass = self.model.get_grass()
         for i, grass_mesh in enumerate(grass):
             x, y, z = grass_mesh.metadata["displacement"]
-            model_pose = [x, y, z, np.random.random_sample(), 1, 0]
+            model_pose = [x, y, z, np.random.random_sample(), 0, 0]
             model = create_grass_sdf(
                 "model://grass_blade/meshes/model.dae",
                 f"Grass_{i}",
                 model_pose,
-                "Gazebo/Grass",
+                "Gazebo/Green",
                 [0.1, 0.1, 0.1],
             )
             world.children["model"].append(model)

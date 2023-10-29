@@ -1,7 +1,7 @@
 # from tkinter import filedialog
 # import os
 from pcg_gazebo.simulation import World
-from util.noise_generators import perlin_noise
+from util.noise_generators import custom_noise
 from util.generate_mesh import create_grass, create_ground_mesh, create_obstacles
 import numpy as np
 from trimesh import scene
@@ -18,9 +18,7 @@ class TerrainGeneratorModel:
         self._z = 10  # not currently used
         self._resolution = 48
         self._scale = 10
-        self._octaves = 2
-        self._persistence = 0.8
-        self._max_angle = 45  # not currently used
+        self._max_angle = 90
         self._tree_density = 1
         self._rock_density = 1
         self._total_obstacles = 1
@@ -28,6 +26,25 @@ class TerrainGeneratorModel:
         self._obstacle_items = []
         self._total_grass = 100
         self._grass_items = []
+        self._noise_type = "Perlin"
+        self._noise_options = {
+            "fractal_octaves": 2,
+            "fractal_gain": 0.5,
+            "fractal_lacunarity": 2,
+            "frequency": 0.1,
+            "fractal_type": "FBM",
+            "perturb_type": "NoPerturb",
+            "perturb_amp": 1,
+            "perturb_frequency": 0.5,
+            "perturb_gain": 0.5,
+            "perturb_octaves": 3,
+            "perturb_lacunarity": 2.0,
+            "perturb_normalise_length": 1.0,
+            "cellular_return_type": "Distance",
+            "cellular_distance_function": "Euclidean",
+            "cellular_jitter": 0.45,
+            "cellular_lookup_frequency": 0.2,
+        }
 
         # Numpy procedural array
         self._procedural_array = None
@@ -47,17 +64,25 @@ class TerrainGeneratorModel:
     def set_z(self, value):
         self._z = int(value)
 
+    def set_noise_type(self, value):
+        self._noise_type = str(value)
+
+    def set_noise_options(self, options):
+        if type(options) is tuple:
+            self._noise_options[options[0]] = options[1]
+        elif isinstance(options, dict):
+            for option in options.keys():
+                var_type = type(self._noise_options[option])
+                self._noise_options[option] = var_type(options[option])
+        else:
+            for option, value in options:
+                self._noise_options[option] = value
+
     def set_resolution(self, value):
         self._resolution = int(value)
 
     def set_scale(self, value):
         self._scale = int(value)
-
-    def set_octaves(self, value):
-        self._octaves = int(value)
-
-    def set_persistence(self, value):
-        self._persistence = float(value)
 
     def set_max_angle(self, value):
         self._max_angle = int(value)
@@ -84,17 +109,20 @@ class TerrainGeneratorModel:
     def get_height(self):
         return self._height
 
+    def get_noise_type(self):
+        return self._noise_type
+
+    def get_noise_options(self):
+        return self._noise_options
+
+    def get_noise_option(self, key):
+        return self._noise_options.get(key)
+
     def get_resolution(self):
         return self._resolution
 
     def get_scale(self):
         return self._scale
-
-    def get_octaves(self):
-        return self._octaves
-
-    def get_persistence(self):
-        return self._persistence
 
     def get_mesh(self):
         return self._mesh
@@ -145,11 +173,10 @@ class TerrainGeneratorModel:
             world.show()
 
     def generate_procedural_array(self):
-        self._procedural_array = perlin_noise(
+        self._procedural_array = custom_noise(
             resolution=self._resolution,
-            scale=self._scale,
-            octaves=self._octaves,
-            persistence=self._persistence,
+            noise_type=self._noise_type,
+            **self._noise_options
         )
 
     def get_obstacle_count(self):
