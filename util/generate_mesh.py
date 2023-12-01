@@ -4,6 +4,30 @@ from PIL import Image
 from trimesh import Trimesh, proximity, transformations, visual, smoothing
 from trimesh.exchange import load
 import copy
+import xatlas
+
+
+def unwrap_mesh(mesh):
+    """
+    A replacement for Trimesh.unwrap() - as its really slow. Essentially just removes safety checks
+    and it's at least ~200% faster.
+    This implementation could still probably be improved but good enough for now
+    """
+
+    uv_coordinates = mesh.vertices[:, :2]  # Taking only X and Y coordinates
+    # Normalize the UV coordinates
+    min_uv = uv_coordinates.min(axis=0)
+    max_uv = uv_coordinates.max(axis=0)
+    uv_coordinates = (uv_coordinates - min_uv) / (max_uv - min_uv)
+    mesh.visual.uv = uv_coordinates
+    # vmap, faces, uv = xatlas.parametrize(mesh.vertices, mesh.faces)
+    #
+    # return Trimesh(
+    #     vertices=mesh.vertices[vmap],
+    #     faces=faces,
+    #     visual=visual.TextureVisuals(uv=uv, image=None),
+    #     process=False,
+    # )
 
 
 def rotate_mesh(mesh, rotation_angle, rotation_axis):
@@ -107,20 +131,20 @@ def clamp_angle(points, angle_threshold, resolution):
     return points * [1, 1, scale_factor]
 
 
-def create_vertices(noise_map, resolution=48, width=10, height=10):
+def create_vertices(noise_map, resolution=48, width=10, depth=10):
     """
     create verticies using a noise map
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
-    `resolution` -- the resolution variable is used in conjunction with the width and height
+    `resolution` -- the resolution variable is used in conjunction with the width and depth
     variables to create a regular grid of points using np.meshgrid() function.
     The total number of vertices in the mesh will be resolution squared.
     `width` -- width of mesh. (default=10)
-    `height` -- height of mesh (default=10)
+    `depth` -- depth of mesh (default=10)
     """
     # Create the grid of vertices
     x = np.linspace(-width / 2, width / 2, resolution)
-    y = np.linspace(-height / 2, height / 2, resolution)
-    X, Y = np.meshgrid(x, y)
+    y = np.linspace(-depth / 2, depth / 2, resolution)
+    X, Y = np.meshgrid(x, y)  # creates a plane of vertices
     Z = noise_map.flatten()  # Use the Perlin noise map to displace the vertices
     vertices = np.vstack((X.flatten(), Y.flatten(), Z)).T
     return vertices
@@ -154,23 +178,25 @@ def create_faces(resolution=48):
     return faces
 
 
-def create_ground_mesh(noise_map, resolution=48, width=10, height=10, max_angle=90):
+def create_ground_mesh(noise_map, resolution=48, width=10, depth=10, max_angle=90):
     """
     Create a trimesh from the vertices and faces
     `noise_map` -- a 2D array of equal dimensions e.g. if rows=10 then columns=10
     `resolution` -- determines the level of detail and complexity of the resulting mesh
     `width` -- width of mesh. (default=10)
-    `height` -- height of mesh (default=10)
+    `depth` -- depth of mesh (default=10)
     `obstacle_count` -- count of obstacles on resulting mesh (default=0)
+    `max_angle` -- the max angle between any two points in degrees (default=0)
     """
-    vertices = create_vertices(noise_map, resolution, width, height)
-    clamped_vertices = clamp_angle(vertices, max_angle, resolution)
+    vertices = create_vertices(noise_map, resolution, width, depth)
+    if max_angle < 90:
+        vertices = clamp_angle(vertices, max_angle, resolution)
     faces = create_faces(resolution)
-    terrain_mesh = Trimesh(vertices=clamped_vertices, faces=faces)
-    # UVs need to be unwrapped so that the Gazebo/Grass texture works
-    terrain_mesh = terrain_mesh.unwrap()
-    smoothing.filter_humphrey(terrain_mesh)
-
+    terrain_mesh = Trimesh(vertices=vertices, faces=faces, visual=visual.TextureVisuals())
+    # Ensure the mesh has a visual
+    # if not hasattr(terrain_mesh, 'visual') or terrain_mesh.visual is None:
+    #     terrain_mesh.visual = 
+    unwrap_mesh(terrain_mesh)
     return terrain_mesh
 
 
@@ -178,6 +204,60 @@ def displace_mesh(mesh, displacement, scale, rotation_axis, rotation_angle):
     rotate_mesh(mesh, rotation_angle, rotation_axis)
     scale_mesh(mesh, scale)
     translate_mesh(mesh, displacement)
+
+
+def barycentric_coords(vertices, point):
+    # Triangle vertices
+    A, B, C = vertices
+
+    # Vectors
+    v0 = C - A
+    v1 = B - A
+    v2 = point - A
+
+    # Compute dot products
+    dot00 = np.dot(v0, v0)
+    dot01 = np.dot(v0, v1)
+    dot02 = np.dot(v0, v2)
+    dot11 = np.dot(v1, v1)
+    dot12 = np.dot(v1, v2)
+
+    # Compute barycentric coordinates
+    inv_denom = 1 / (dot00 * dot11 - dot01 * dot01)
+    u = (dot11 * dot02 - dot01 * dot12) * inv_denom
+    v = (dot00 * dot12 - dot01 * dot02) * inv_denom
+
+    return u, v
+
+
+def is_within_triange(triange, point):
+    u, v = barycentric_coords(triange, point)
+    is_inside = (u >= 0) and (v >= 0) and (u + v < 1)
+    return is_inside
+
+
+def find_closest_z(mesh, point):
+    """
+    Find the closest face to a given point
+
+    :param mesh Trimesh: ground mesh
+    :param point []: (x, y) point
+    """
+    for face in mesh.faces:
+        # z axis can be ignored
+        p1 = mesh.vertices[face[0]]
+        p2 = mesh.vertices[face[1]]
+        p3 = mesh.vertices[face[2]]
+        if is_within_triange([p1[:2], p2[:2], p3[:2]], point):
+            # Find the plane equation of the triangle
+            normal = np.cross(p2 - p1, p3 - p1)
+            D = -np.dot(normal, p1)
+            x, y = point
+
+            # Solve for Z
+            # Ax + By + Cz + D = 0 => z = -(Ax + By + D) / C
+            z = -(normal[0] * x + normal[1] * y + D) / normal[2]
+            return z
 
 
 def create_displaced_meshes(
@@ -196,8 +276,7 @@ def create_displaced_meshes(
         x = np.random.uniform(x_min, x_max)
         y_min, y_max = y_range
         y = np.random.uniform(y_min, y_max)
-        closest, _, _ = proximity.closest_point(ground_mesh, [np.array([x, y, 0])])
-        z = closest[0][2]
+        z = find_closest_z(ground_mesh, [x, y]) or 0  # if not found do a default of 0
         scale_min, scale_max = scale_range
         scale = np.random.uniform(scale_min, scale_max)
         rotation_axis_min, rotation_axis_max = rotation_axis_range

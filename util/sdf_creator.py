@@ -30,7 +30,7 @@ def create_tree_sdf(
         visual = create_sdf_element("visual")
         submesh_name = material_name.split("/")[-1]
         geometry = create_geometry_sdf(mesh_uri, scale, submesh_name)
-        material.reset(with_optional_elements=True)  # type: ignore
+        material.reset()  # type: ignore
         script.name = material_name  # type: ignore
         uri.value = script_uris[0]  # type: ignore
         uri2.value = script_uris[1]  # type: ignore
@@ -50,9 +50,8 @@ def create_tree_sdf(
     model.static = True  # type: ignore
     return model
 
-def create_ground_sdf(
-    mesh_uri, model_name, model_pose, material_name, scale
-):
+
+def create_ground_sdf(mesh_uri, model_name, model_pose, material_name, scale):
     uri = create_sdf_element("uri")
     uri2 = create_sdf_element("uri")
     script = create_sdf_element("script")
@@ -62,16 +61,21 @@ def create_ground_sdf(
     link = create_sdf_element("link")
     model = create_sdf_element("model")
     geometry = create_geometry_sdf(mesh_uri, scale)
-    material.reset(with_optional_elements=True)  # type: ignore
+    material.reset()  
     script.name = material_name  # type: ignore
     # for objects that dont have custom materials, just use the gazebo default materials
-    uri.value = "file://media/materials/scripts/gazebo.material" # type: ignore
-    script.children["uri"] = uri # type: ignore
+    uri.value = "file://media/materials/scripts/gazebo.material"  # type: ignore
+    script.children["uri"] = uri  # type: ignore
+    material.lighting = True 
+    # material.ambient = [0, 0, 0, 0]
+    # material.diffuse = [1, 1, 1, 1]
+    # material.specular = [0, 0, 0, 0]
+    # material.emissive = [0, 0, 0, 0]
     material.children["script"] = script  # type: ignore
     visual.children["geometry"] = geometry  # type: ignore
     visual.children["material"] = material  # type: ignore
     visual.cast_shadows = True
-    visual.name = "rock"  # type: ignore
+    visual.name = "visual"  # type: ignore
     collision.children["geometry"] = geometry  # type: ignore
     link.children["collision"] = collision  # type: ignore
     link.children["visual"] = visual  # type: ignore
@@ -80,7 +84,6 @@ def create_ground_sdf(
     model.pose = model_pose  # type: ignore
     model.static = True  # type: ignore
     return model
-
 
 
 def create_rock_sdf(
@@ -129,11 +132,11 @@ def create_grass_sdf(mesh_uri, model_name, model_pose, material_name, scale):
     script.name = material_name  # type: ignore
     # for objects that dont have custom materials, just use the gazebo default materials
     uri.value = "file://media/materials/scripts/gazebo.material"
-    script.children["uri"] = uri # type: ignore
+    script.children["uri"] = uri  # type: ignore
     material.children["script"] = script  # type: ignore
     visual.children["geometry"] = geometry  # type: ignore
     material.lighting = True
-    material.emissive = [0, 1, 0, 1]
+    material.ambient = [0, 1, 0, 1]
     visual.children["material"] = material  # type: ignore
     visual.name = "grass"  # type: ignore
     link.children["visual"] = visual  # type: ignore

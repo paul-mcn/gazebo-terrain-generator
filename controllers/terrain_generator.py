@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 from pcg_gazebo.parsers.sdf import create_sdf_element
+from pcg_gazebo.simulation import World
 from models.terrain_generator import TerrainGeneratorModel
 from util.sdf_creator import (
     create_grass_sdf,
@@ -10,6 +11,7 @@ from util.sdf_creator import (
 )
 import numpy as np
 import yaml
+from util.terrain_defaults import settings
 
 
 def emit_value_change(func):
@@ -42,12 +44,12 @@ class TerrainGeneratorController:
         self.model.set_width(value)
 
     @emit_value_change
-    def set_height(self, value):
-        self.model.set_height(value)
+    def set_depth(self, value):
+        self.model.set_depth(value)
 
     @emit_value_change
-    def set_z(self, value):
-        self.model.set_z(value)
+    def set_height_multiplier(self, value):
+        self.model.set_height_multiplier(value)
 
     @emit_value_change
     def set_noise_type(self, value):
@@ -91,14 +93,14 @@ class TerrainGeneratorController:
     def set_on_value_change(self, callback):
         self.on_value_change = callback
 
-    def get_height(self):
-        return self.model.get_height()
+    def get_depth(self):
+        return self.model.get_depth()
 
     def get_width(self):
         return self.model.get_width()
 
-    def get_z(self):
-        return self.model._z
+    def get_height_multiplier(self):
+        return self.model._height_multiplier
 
     def get_noise_type(self):
         return self.model._noise_type
@@ -179,17 +181,21 @@ class TerrainGeneratorController:
         try:
             with open(f"./assets/setting-presets/{filepath}", "r") as stream:
                 try:
-                    settings = yaml.safe_load(stream)
-                    self.set_height(settings["height"])
-                    self.set_width(settings["width"])
-                    self.set_resolution(settings["resolution"])
-                    self.set_scale(settings["scale"])
-                    self.set_max_angle(settings["max_angle"])
-                    self.set_noise_type(settings["noise_type"])
-                    self.set_noise_options(settings["noise_options"])
-                    self.set_tree_density(settings["tree_density"])
-                    self.set_rock_density(settings["rock_density"])
-                    self.set_total_obstacles(settings["total_obstacles"])
+                    yml_settings = yaml.safe_load(stream)
+                    # we use get here because the yml setting may not exist
+                    # whereas the default setting will always exist
+                    get_setting = lambda x: yml_settings.get(x) or settings[x]
+                    self.set_depth(get_setting("depth"))
+                    self.set_width(get_setting("width"))
+                    self.set_height_multiplier(get_setting("height_multiplier"))
+                    self.set_resolution(get_setting("resolution"))
+                    self.set_scale(get_setting("scale"))
+                    self.set_max_angle(get_setting("max_angle"))
+                    self.set_noise_type(get_setting("noise_type"))
+                    self.set_noise_options(get_setting("noise_options"))
+                    self.set_tree_density(get_setting("tree_density"))
+                    self.set_rock_density(get_setting("rock_density"))
+                    self.set_total_obstacles(get_setting("total_obstacles"))
                 except yaml.YAMLError as exc:
                     print("Error: Could not load yml file")
                     print(exc)
@@ -200,7 +206,7 @@ class TerrainGeneratorController:
 
     def save_generator_settings(self, filename):
         data = {
-            "height": self.get_height(),
+            "depth": self.get_depth(),
             "width": self.get_width(),
             "resolution": self.get_resolution(),
             "scale": self.get_scale(),
@@ -224,10 +230,11 @@ class TerrainGeneratorController:
         model_dir = Path(Path.home(), ".gazebo", "models")
         shutil.copytree(assets_dir, model_dir, dirs_exist_ok=True)
 
-    def export_world(self, model_folder="ground_mesh1"):
+    def export_world(self, custom_name=None):
+        noise_type = self.model.get_noise_type().lower().replace(" ", "-")
+        model_folder = custom_name or f"{noise_type}_terrain_mesh"
         model_path = Path(Path.home(), ".gazebo", "models", model_folder)
         model_path.mkdir(exist_ok=True)
-
         ground_mesh = self.model.get_mesh()
         if ground_mesh is None:
             return print("Erorr: mesh does not exist")
@@ -245,9 +252,8 @@ class TerrainGeneratorController:
         )
         self.model.update_mesh()
         obstacles = self.model.get_obstacles()
-        world = create_sdf_element("world")
-        physics = create_sdf_element("physics")
-        physics.reset(mode="ode", with_optional_elements=True)
+        world = World()
+        world = world.to_sdf(with_default_sun=True)
         world.children["model"] = [ground_mesh]
         for i, grass_mesh in enumerate(obstacles):
             x, y, z = grass_mesh.metadata["displacement"]
@@ -294,7 +300,9 @@ class TerrainGeneratorController:
             world.children["model"].append(model)
         sdf = create_sdf_element("sdf")
         sdf.children["world"] = world
-        sdf.export_xml("./worlds/generated_world.world")
+        world_name = custom_name or f"{noise_type}_generated_world.world"
+        world_name = world_name if ".world" in world_name else f"{world_name}.world"
+        sdf.export_xml(f"./worlds/{world_name}")
         print("world exported")
 
     def preview_mesh(self):

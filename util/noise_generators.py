@@ -47,4 +47,7 @@ def custom_noise(
         noise.cell.noiseLookupType = fns.NoiseType[noise_type]
 
     array = noise.genAsGrid([resolution, resolution, resolution])
-    return array[:, :, 1]
+    sliced_array = array[:, :, 1]  # we just want the y axis
+    offset_array = sliced_array + abs(sliced_array.min())  # remove negative values
+
+    return offset_array

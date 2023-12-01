@@ -1,3 +1,4 @@
+import time
 import tkinter as tk
 import numpy as np
 from controllers.terrain_generator import TerrainGeneratorController
@@ -138,7 +139,7 @@ class SettingsPanel(tk.Frame):
         export_btn.pack(side="left", pady=10)
 
         preview_btn = tk.Button(
-            button_frame, text="Preview mesh", command=self.preview_mesh
+            button_frame, text="Preview mesh", command=self.controller.preview_mesh
         )
         preview_btn.pack(side="left", pady=10)
 
@@ -168,14 +169,14 @@ class SettingsPanel(tk.Frame):
         return inputs
 
     def update_input_values(self):
+        """
+        Updates all of the inputs related to changing the terrain
+        """
         for input in self.inputs:
             if input.get("getter"):
                 input.get("widget").set(input["getter"]())
-            # else:
-            # if there is not setter than its probably a dropdown menu with a commmand instead
-            # input.get("widget").command()
 
-    def on_change_dropdown(self, value):
+    def on_change_load_settings_dropdown(self, value):
         self.controller.load_generator_settings(value)
         self.update_input_values()
 
@@ -204,7 +205,7 @@ class SettingsPanel(tk.Frame):
         noise_options = self.controller.get_noise_options()
         fractal_input_ids = []
         # find all the inputs related to the "noise_pattern"
-        # e.g. noise_pattern = "fractal" => get all the fractal related inputs
+        # for e.g. if noise_pattern == "fractal" => get all the fractal related inputs
         for option in noise_options.keys():
             # if option is fractal and selected dropdown item is fractal
             if re.search(noise_pattern, option, re.IGNORECASE):
@@ -240,7 +241,7 @@ class SettingsPanel(tk.Frame):
                 elif type(noise_options[option]) == float:
                     input["input_args"]["from_"] = 0.01
                     input["input_args"]["resolution"] = 0.01
-                    input["input_args"]["to"] = 5
+                    input["input_args"]["to"] = 3
                 inputs.append(input)
 
             elif type(noise_options[option]) == str:
@@ -303,7 +304,7 @@ class SettingsPanel(tk.Frame):
                 "id": "dropdown-presets",
                 "input_creator": Dropdown,
                 "input_args": {
-                    "command": self.on_change_dropdown,
+                    "command": self.on_change_load_settings_dropdown,
                     "parent": generator_settings_frame,
                     "default": "Default.yml",
                     "values": self.get_setting_presets(),
@@ -315,20 +316,32 @@ class SettingsPanel(tk.Frame):
                 "input_args": {
                     "command": self.controller.set_width,  # the handler for the input
                     "parent": terrain_surface_frame,  # the parent frame
-                    "label_text": "Width",
+                    "label_text": "Width (m)",
                     "from_": 1,
                     "to": 200,
                 },
             },
             {
-                "getter": self.controller.get_height,
+                "getter": self.controller.get_depth,
                 "input_creator": SliderControl,
                 "input_args": {
-                    "command": self.controller.set_height,
+                    "command": self.controller.set_depth,
                     "parent": terrain_surface_frame,
-                    "label_text": "Height",
+                    "label_text": "Depth (m)",
                     "from_": 1,
                     "to": 200,
+                },
+            },
+            {
+                "getter": self.controller.get_height_multiplier,
+                "input_creator": SliderControl,
+                "input_args": {
+                    "command": self.controller.set_height_multiplier,
+                    "parent": terrain_surface_frame,
+                    "label_text": "Height multiplier",
+                    "from_": 0,
+                    "to": 10,
+                    "resolution": 0.01,
                 },
             },
             {
@@ -349,7 +362,7 @@ class SettingsPanel(tk.Frame):
                 "input_args": {
                     "command": self.controller.set_max_angle,
                     "parent": terrain_surface_frame,
-                    "label_text": "Max angle",
+                    "label_text": "Max angle (degrees)",
                     "from_": 0,
                     "to": 90,
                 },
@@ -438,7 +451,4 @@ class SettingsPanel(tk.Frame):
 
     def export_world(self):
         self.controller.export_collision_objects()
-        self.controller.export_world()
-
-    def preview_mesh(self):
-        self.controller.preview_mesh()
+        self.controller.export_world("noise_rocky")

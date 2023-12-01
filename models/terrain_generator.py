@@ -5,6 +5,7 @@ from util.noise_generators import custom_noise
 from util.generate_mesh import create_grass, create_ground_mesh, create_obstacles
 import numpy as np
 from trimesh import scene
+from util.terrain_defaults import settings
 
 
 class TerrainGeneratorModel:
@@ -13,39 +14,21 @@ class TerrainGeneratorModel:
     def __init__(self):
         super().__init__()
         # settings for mesh
-        self._width = 10
-        self._height = 10
-        self._z = 10  # not currently used
-        self._resolution = 48
-        self._scale = 10
-        self._max_angle = 90
-        self._tree_density = 1
-        self._rock_density = 1
-        self._total_obstacles = 1
-        self._mesh_rgba = np.array([0, 128, 0, 1])  # the color the mesh will be
-        self._obstacle_items = []
-        self._total_grass = 100
-        self._grass_items = []
-        self._noise_type = "Perlin"
-        self._noise_options = {
-            "fractal_octaves": 2,
-            "fractal_gain": 0.5,
-            "fractal_lacunarity": 2,
-            "frequency": 0.1,
-            "fractal_type": "FBM",
-            "perturb_type": "NoPerturb",
-            "perturb_amp": 1,
-            "perturb_frequency": 0.5,
-            "perturb_gain": 0.5,
-            "perturb_octaves": 3,
-            "perturb_lacunarity": 2.0,
-            "perturb_normalise_length": 1.0,
-            "cellular_return_type": "Distance",
-            "cellular_distance_function": "Euclidean",
-            "cellular_jitter": 0.45,
-            "cellular_lookup_frequency": 0.2,
-        }
-
+        self._width = settings["width"]
+        self._depth = settings["depth"]
+        self._height_multiplier = settings["height_multiplier"]
+        self._resolution = settings["resolution"]
+        self._scale = settings["scale"]
+        self._max_angle = settings["max_angle"]
+        self._tree_density = settings["tree_density"]
+        self._rock_density = settings["rock_density"]
+        self._total_obstacles = settings["total_obstacles"]
+        self._mesh_rgba = settings["mesh_rgba"]
+        self._obstacle_items = settings["obstacle_items"]
+        self._total_grass = settings["total_grass"]
+        self._grass_items = settings["grass_items"]
+        self._noise_type = settings["noise_type"]
+        self._noise_options = settings["noise_options"]
         # Numpy procedural array
         self._procedural_array = None
         self.generate_procedural_array()
@@ -58,11 +41,11 @@ class TerrainGeneratorModel:
     def set_width(self, value):
         self._width = max(int(value), 1)
 
-    def set_height(self, value):
-        self._height = max(int(value), 1)
+    def set_depth(self, value):
+        self._depth = max(int(value), 1)
 
-    def set_z(self, value):
-        self._z = int(value)
+    def set_height_multiplier(self, value):
+        self._height_multiplier = max(float(value), 0)  # prevent negative numbers
 
     def set_noise_type(self, value):
         self._noise_type = str(value)
@@ -106,8 +89,8 @@ class TerrainGeneratorModel:
     def get_width(self):
         return self._width
 
-    def get_height(self):
-        return self._height
+    def get_depth(self):
+        return self._depth
 
     def get_noise_type(self):
         return self._noise_type
@@ -173,11 +156,12 @@ class TerrainGeneratorModel:
             world.show()
 
     def generate_procedural_array(self):
-        self._procedural_array = custom_noise(
+        noise = custom_noise(
             resolution=self._resolution,
             noise_type=self._noise_type,
             **self._noise_options
         )
+        self._procedural_array = noise * self._height_multiplier
 
     def get_obstacle_count(self):
         """
@@ -197,14 +181,14 @@ class TerrainGeneratorModel:
 
     def _generate_mesh(self):
         """
-        Generates a trimesh using a noise_map, width, height and resolution.
+        Generates a trimesh using a noise_map, width, depth and resolution.
         `self._generate_procedural_array` needs to be called first.
         """
         mesh = create_ground_mesh(
             noise_map=self._procedural_array,
             resolution=self._resolution,
             width=self._width,
-            height=self._height,
+            depth=self._depth,
             max_angle=self._max_angle,
         )
         self._mesh = mesh
@@ -212,7 +196,7 @@ class TerrainGeneratorModel:
             rock_count, tree_count = self.get_obstacle_count()
             # center displacement
             x_displacement = [-self._width // 2, self._width // 2]
-            y_displacement = [-self._height // 2, self._height // 2]
+            y_displacement = [-self._depth // 2, self._depth // 2]
             self._obstacle_items = create_obstacles(
                 rock_count, tree_count, x_displacement, y_displacement, mesh
             )
